@@ -1,0 +1,18 @@
+{
+  "name": "PULSO — Reproductor de beats",
+  "short_name": "PULSO",
+  "description": "Reproductor de audio con visualizador de onda y efectos que reaccionan al ritmo.",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#060608",
+  "theme_color": "#060608",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
