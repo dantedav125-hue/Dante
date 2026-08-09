@@ -281,8 +281,9 @@
 
   var N_PTS = 160;                          // puntos de la curva
   var ys = new Float32Array(N_PTS + 1);     // forma suavizada entre cuadros
-  var bandV = new Float32Array(N_PTS + 1);  // volumen crudo por banda
-  var norm = 0;                             // normalizador adaptativo
+  var bandV = new Float32Array(N_PTS + 1);    // envolvente suavizada
+  var envRaw = new Float32Array(N_PTS + 1);   // envolvente cruda
+  var bandNorm = new Float32Array(N_PTS + 1); // máximo adaptativo por banda
 
   /* ============ DOM ============ */
   var cv = document.getElementById('cv');
@@ -445,40 +446,45 @@
      centro = medios (voces, melodía), derecha = agudos (hats). La altura de
      cada zona sigue el volumen de su banda, con una ola que le da fluidez. */
   var lastFrame = performance.now();
-  var phase = 0;
+  var phase = 0, phaseF = 0;   // ola lenta (graves) y ola rápida (agudos)
 
-  function updateShape(nowSec){
+  function updateShape(){
     var binHz = (actx ? actx.sampleRate : 48000) / analyser.fftSize;
-    var i, fmax = 0;
+    var i, j;
 
-    // 1) volumen de cada banda (izq graves → der agudos, escala log)
-    //    tilt agresivo pensado para beats instrumentales: el 808 siempre
-    //    domina la mezcla, así que entra recortado y los agudos exagerados
+    // 1) volumen de cada banda, normalizado contra SU PROPIO máximo
+    //    adaptativo: el bajo se mide contra el bajo, los hats contra los
+    //    hats — todas las zonas alcanzan alturas comparables
     for (i = 0; i <= N_PTS; i++){
       var d = i / N_PTS;
       var f = 40 * Math.pow(300, d);
       var bin = Math.max(1, Math.round(f / binHz));
       var m = (freqData[bin] + freqData[bin + 1] + freqData[bin + 2]) / (3 * 255);
       var v = Math.pow(m, 1.6) * (0.12 + Math.pow(d, 1.3) * 3.6);
-      bandV[i] = v;
-      if (v > fmax) fmax = v;
+      var bn = bandNorm[i];
+      bn += (v > bn ? 0.35 : 0.015) * (v - bn);
+      bandNorm[i] = bn;
+      envRaw[i] = Math.pow(Math.min(1, v / Math.max(bn, 0.06)), 1.25);
     }
 
-    // 2) normalizar contra la banda más fuerte del momento: así siempre hay
-    //    contraste entre zonas, aunque la mezcla esté muy cargada
-    norm += (fmax > norm ? 0.5 : 0.05) * (fmax - norm);
-    var inv = norm > 0.0001 ? 1 / norm : 0;
+    // 2) suavizado espacial: elimina las mini-ondas entre puntos vecinos
+    for (i = 0; i <= N_PTS; i++){
+      var s = 0, c = 0;
+      for (j = -4; j <= 4; j++){
+        var k = i + j;
+        if (k >= 0 && k <= N_PTS){ s += envRaw[k]; c++; }
+      }
+      bandV[i] = s / c;
+    }
 
-    // 3) forma final: cada zona se mueve a la velocidad de su frecuencia —
-    //    el bajo lento y pesado, los agudos rápidos y vibrantes
+    // 3) forma final: ola lenta en los graves, rápida en los agudos,
+    //    mezcladas gradualmente a lo largo de la línea
     for (i = 0; i <= N_PTS; i++){
       var d2 = i / N_PTS;
-      var env = Math.pow(Math.min(1, bandV[i] * inv), 1.3);
-      // ondulación secundaria cuya velocidad crece con la frecuencia
-      var wob = 0.85 * Math.sin(nowSec * (0.7 + d2 * 5.5) * 2 + i * 0.07);
-      var carrier = Math.sin(i * 0.26 + phase + wob);
+      var carrier = (1 - d2) * Math.sin(i * 0.22 + phase)
+                  + d2 * Math.sin(i * 0.22 + phaseF);
       var edge = Math.min(1, Math.min(i, N_PTS - i) / 7);
-      var target = env * carrier * edge;
+      var target = bandV[i] * carrier * edge;
       // respuesta: graves amortiguados, agudos inmediatos
       ys[i] += (target - ys[i]) * (0.18 + d2 * 0.55);
     }
@@ -492,11 +498,16 @@
     g.lineCap = 'round';
     g.beginPath();
     var midY = H / 2;
-    for (var i = 0; i <= N_PTS; i++){
+    var x0 = 0, y0 = midY + ys[0] * scale;
+    g.moveTo(x0, y0);
+    for (var i = 1; i <= N_PTS; i++){
       var x = (i / N_PTS) * W;
       var y = midY + ys[i] * scale;
-      if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      // curvas por punto medio: trazo continuo sin esquinas
+      g.quadraticCurveTo(x0, y0, (x0 + x) / 2, (y0 + y) / 2);
+      x0 = x; y0 = y;
     }
+    g.lineTo(x0, y0);
     g.stroke();
     g.globalAlpha = 1;
   }
@@ -510,8 +521,9 @@
     analyse();
     beatEnv *= Math.pow(0.03, dt);
 
-    // ola viajera con velocidad estable (acelera apenas con la intensidad)
-    phase += dt * (2.2 + level * 3.5);
+    // olas viajeras: la lenta lleva los graves, la rápida los agudos
+    phase  += dt * (1.1 + level * 1.6);
+    phaseF += dt * (3.8 + level * 5.0);
 
     // amplitud general: sigue el volumen, cae suave al pausar
     var target = playing ? Math.min(1, level * 1.4 + bassSmooth * 0.9) : 0;
@@ -523,7 +535,7 @@
     var midY = H / 2;
     var grad = '#F2EFEA';
 
-    if (playing && freqData) updateShape(now / 1000);
+    if (playing && freqData) updateShape();
     else for (var k = 0; k <= N_PTS; k++) ys[k] *= 0.92;   // pausa: se aquieta
 
     if (amp > 0.015){
