@@ -351,7 +351,7 @@
     actx = new AC();
     analyser = actx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.65;
+    analyser.smoothingTimeConstant = 0.4;
     freqData = new Uint8Array(analyser.frequencyBinCount);
     timeData = new Uint8Array(analyser.fftSize);
     srcNode = actx.createMediaElementSource(audio);
@@ -447,17 +447,19 @@
   var lastFrame = performance.now();
   var phase = 0;
 
-  function updateShape(){
+  function updateShape(nowSec){
     var binHz = (actx ? actx.sampleRate : 48000) / analyser.fftSize;
     var i, fmax = 0;
 
     // 1) volumen de cada banda (izq graves → der agudos, escala log)
+    //    tilt agresivo pensado para beats instrumentales: el 808 siempre
+    //    domina la mezcla, así que entra recortado y los agudos exagerados
     for (i = 0; i <= N_PTS; i++){
       var d = i / N_PTS;
       var f = 40 * Math.pow(300, d);
       var bin = Math.max(1, Math.round(f / binHz));
       var m = (freqData[bin] + freqData[bin + 1] + freqData[bin + 2]) / (3 * 255);
-      var v = Math.pow(m, 1.6) * (0.28 + d * 1.85);  // tilt: compensa graves
+      var v = Math.pow(m, 1.6) * (0.15 + d * 2.3);
       bandV[i] = v;
       if (v > fmax) fmax = v;
     }
@@ -467,13 +469,18 @@
     norm += (fmax > norm ? 0.5 : 0.05) * (fmax - norm);
     var inv = norm > 0.0001 ? 1 / norm : 0;
 
-    // 3) forma final: espectro relativo × ola fina
+    // 3) forma final: cada zona se mueve a la velocidad de su frecuencia —
+    //    el bajo lento y pesado, los agudos rápidos y vibrantes
     for (i = 0; i <= N_PTS; i++){
+      var d2 = i / N_PTS;
       var env = Math.pow(Math.min(1, bandV[i] * inv), 1.3);
-      var carrier = Math.sin(i * 0.26 + phase);
+      // ondulación secundaria cuya velocidad crece con la frecuencia
+      var wob = 0.85 * Math.sin(nowSec * (0.7 + d2 * 5.5) * 2 + i * 0.07);
+      var carrier = Math.sin(i * 0.26 + phase + wob);
       var edge = Math.min(1, Math.min(i, N_PTS - i) / 7);
       var target = env * carrier * edge;
-      ys[i] += (target - ys[i]) * 0.45;
+      // respuesta: graves amortiguados, agudos inmediatos
+      ys[i] += (target - ys[i]) * (0.18 + d2 * 0.55);
     }
   }
 
@@ -508,7 +515,7 @@
 
     // amplitud general: sigue el volumen, cae suave al pausar
     var target = playing ? Math.min(1, level * 1.4 + bassSmooth * 0.9) : 0;
-    amp += (target - amp) * (playing ? 0.3 : 0.06);
+    amp += (target - amp) * (playing ? 0.45 : 0.06);
 
     g.fillStyle = '#050506';
     g.fillRect(0, 0, W, H);
@@ -516,11 +523,11 @@
     var midY = H / 2;
     var grad = '#F2EFEA';
 
-    if (playing && freqData) updateShape();
+    if (playing && freqData) updateShape(now / 1000);
     else for (var k = 0; k <= N_PTS; k++) ys[k] *= 0.92;   // pausa: se aquieta
 
     if (amp > 0.015){
-      var scale = H * 0.32 * (0.10 + amp * 0.9) * (1 + beatEnv * 0.45);
+      var scale = H * 0.21 * (0.10 + amp * 0.9) * (1 + beatEnv * 0.35);
       strokeShape(0.94, 3, scale, grad);
     } else {
       var idle = REDUCED ? 0 : Math.sin(now * 0.0012) * 1.2;
