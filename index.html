@@ -279,8 +279,8 @@
   var bassHist = [], level = 0, amp = 0, bassSmooth = 0;
   var beatEnv = 0, lastBeatAt = 0;
 
-  var N_PTS = 160;                          // puntos de la curva
-  var ys = new Float32Array(N_PTS + 1);     // forma suavizada entre cuadros
+  var N_PTS = 56;                           // número de líneas verticales
+  var ys = new Float32Array(N_PTS + 1);     // brillo suavizado por línea
   var bandV = new Float32Array(N_PTS + 1);    // envolvente suavizada
   var envRaw = new Float32Array(N_PTS + 1);   // envolvente cruda
   var bandNorm = new Float32Array(N_PTS + 1); // máximo adaptativo por banda
@@ -441,12 +441,12 @@
     }
   }
 
-  /* ============ render: una sola línea, espectro de izquierda a derecha ====
-     La línea es un ecualizador continuo: izquierda = graves (kick/808),
-     centro = medios (voces, melodía), derecha = agudos (hats). La altura de
-     cada zona sigue el volumen de su banda, con una ola que le da fluidez. */
+  /* ============ render: cortina de líneas verticales ============
+     Toda la pantalla cubierta de líneas verticales blancas. Cada línea es
+     una banda de frecuencia (izq = graves, der = agudos) y se ilumina con
+     el volumen de su banda: el kick enciende la izquierda, los hats la
+     derecha. */
   var lastFrame = performance.now();
-  var phase = 0, phaseF = 0;   // ola lenta (graves) y ola rápida (agudos)
 
   function updateShape(){
     var binHz = (actx ? actx.sampleRate : 48000) / analyser.fftSize;
@@ -467,48 +467,39 @@
       envRaw[i] = Math.pow(Math.min(1, v / Math.max(bn, 0.06)), 1.25);
     }
 
-    // 2) suavizado espacial: elimina las mini-ondas entre puntos vecinos
+    // 2) suavizado espacial ligero entre líneas vecinas
     for (i = 0; i <= N_PTS; i++){
       var s = 0, c = 0;
-      for (j = -4; j <= 4; j++){
+      for (j = -1; j <= 1; j++){
         var k = i + j;
         if (k >= 0 && k <= N_PTS){ s += envRaw[k]; c++; }
       }
       bandV[i] = s / c;
     }
 
-    // 3) forma final: ola lenta en los graves, rápida en los agudos,
-    //    mezcladas gradualmente a lo largo de la línea
+    // 3) brillo final por línea: graves amortiguados, agudos inmediatos
     for (i = 0; i <= N_PTS; i++){
       var d2 = i / N_PTS;
-      var carrier = (1 - d2) * Math.sin(i * 0.22 + phase)
-                  + d2 * Math.sin(i * 0.22 + phaseF);
-      var edge = Math.min(1, Math.min(i, N_PTS - i) / 7);
-      var target = bandV[i] * carrier * edge;
-      // respuesta: graves amortiguados, agudos inmediatos
-      ys[i] += (target - ys[i]) * (0.38 + d2 * 0.45);
+      ys[i] += (bandV[i] - ys[i]) * (0.38 + d2 * 0.45);
     }
   }
 
-  function strokeShape(alpha, width, scale, gradient){
-    g.strokeStyle = gradient;
-    g.globalAlpha = alpha;
-    g.lineWidth = width;
-    g.lineJoin = 'round';
-    g.lineCap = 'round';
-    g.beginPath();
-    var midY = H / 2;
-    var x0 = 0, y0 = midY + ys[0] * scale;
-    g.moveTo(x0, y0);
-    for (var i = 1; i <= N_PTS; i++){
-      var x = (i / N_PTS) * W;
-      var y = midY + ys[i] * scale;
-      // curvas por punto medio: trazo continuo sin esquinas
-      g.quadraticCurveTo(x0, y0, (x0 + x) / 2, (y0 + y) / 2);
-      x0 = x; y0 = y;
+  function drawCurtain(now){
+    g.fillStyle = '#F2EFEA';
+    var slot = W / (N_PTS + 1);
+    for (var i = 0; i <= N_PTS; i++){
+      var x = (i + 0.5) * slot;
+      var e = ys[i];
+      // brillo base tenue + el volumen de la banda lo enciende
+      var a = 0.05 + e * (0.10 + 0.85 * amp) + beatEnv * 0.03;
+      if (!playing && amp < 0.02){
+        // reposo: cortina tenue respirando apenas
+        a = 0.06 + (REDUCED ? 0 : Math.sin(now * 0.0011 + i * 0.35) * 0.02);
+      }
+      var w = 1 + e * 2.2 * amp;
+      g.globalAlpha = Math.min(1, a);
+      g.fillRect(x - w / 2, 0, w, H);
     }
-    g.lineTo(x0, y0);
-    g.stroke();
     g.globalAlpha = 1;
   }
 
@@ -521,10 +512,6 @@
     analyse();
     beatEnv *= Math.pow(0.03, dt);
 
-    // olas viajeras: la lenta lleva los graves, la rápida los agudos
-    phase  += dt * (1.1 + level * 1.6);
-    phaseF += dt * (3.8 + level * 5.0);
-
     // amplitud general: sigue el volumen, cae suave al pausar
     var target = playing ? Math.min(1, level * 1.4 + bassSmooth * 0.9) : 0;
     amp += (target - amp) * (playing ? 0.6 : 0.06);
@@ -532,26 +519,10 @@
     g.fillStyle = '#050506';
     g.fillRect(0, 0, W, H);
 
-    var midY = H / 2;
-    var grad = '#F2EFEA';
-
     if (playing && freqData) updateShape();
     else for (var k = 0; k <= N_PTS; k++) ys[k] *= 0.92;   // pausa: se aquieta
 
-    if (amp > 0.015){
-      var scale = H * 0.21 * (0.10 + amp * 0.9) * (1 + beatEnv * 0.35);
-      strokeShape(0.94, 3, scale, grad);
-    } else {
-      var idle = REDUCED ? 0 : Math.sin(now * 0.0012) * 1.2;
-      g.strokeStyle = current >= 0 ? grad : '#2A2A30';
-      g.globalAlpha = current >= 0 ? 0.5 : 1;
-      g.lineWidth = 1;
-      g.beginPath();
-      g.moveTo(0, midY + idle);
-      g.lineTo(W, midY + idle);
-      g.stroke();
-      g.globalAlpha = 1;
-    }
+    drawCurtain(now);
 
     // tiempo y progreso
     if (audio && current >= 0){
