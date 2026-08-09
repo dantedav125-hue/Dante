@@ -457,18 +457,17 @@
       var bin = Math.max(1, Math.round(f / binHz));
       var m = (freqData[bin] + freqData[bin + 1] + freqData[bin + 2]) / (3 * 255);
       var v = Math.pow(m, 1.5) * (0.5 + d * 1.0);   // tilt suave
-      // detector de ataques: cada banda se compara contra su propio
-      // promedio móvil. Solo el CAMBIO estira el puntito — un sonido
-      // sostenido (el bajo siempre presente) se vuelve promedio y regresa
-      // a reposo. Nada ataca todo el tiempo → siempre hay espacios.
-      var av = bandNorm[i];
-      av += (v - av) * (v > av ? 0.10 : 0.05);
-      bandNorm[i] = av;
-      var flux = (v - av * 1.04) / (av + 0.02);
-      if (flux < 0) flux = 0;
-      flux *= (0.75 + d * 0.5) * 2.2;               // graves menos sensibles
-      // techo suave: ni el golpe más duro llega al límite del área
-      envRaw[i] = Math.min(1, (flux / (1 + flux)) * 1.25);
+      // lógica de nivel: cada banda contra su propio máximo adaptativo,
+      // con umbral más alto hacia los graves (el bajo siempre suena
+      // fuerte en un beat instrumental)
+      var bn = bandNorm[i];
+      bn += (v > bn ? 0.3 : 0.012) * (v - bn);
+      bandNorm[i] = bn;
+      var rel = Math.min(1, v / Math.max(bn, 0.06));
+      var thr = 0.38 + (1 - d) * 0.27;
+      rel = (rel - thr) / (1 - thr);
+      // sensibilidad al 80%: ni al máximo se llena el área
+      envRaw[i] = rel <= 0 ? 0 : Math.pow(rel, 1.9) * 0.8;
     }
 
     // suavizado mínimo: solo con el vecino inmediato, para conservar
