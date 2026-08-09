@@ -462,9 +462,12 @@
       bandNorm[i] = bn;
       // compuerta de contraste: en beats bien masterizados todo anda cerca
       // del máximo, así que solo lo que supera el umbral se estira — el
-      // resto se queda de puntito
+      // resto se queda de puntito. El umbral sube hacia los graves: en un
+      // beat instrumental el bajo suena fuerte SIEMPRE, así que solo el
+      // golpe (kick/808) lo activa, no el rumble constante
       var rel = Math.min(1, v / Math.max(bn, 0.06));
-      rel = (rel - 0.38) / 0.62;
+      var thr = 0.38 + (1 - d) * 0.27;
+      rel = (rel - thr) / (1 - thr);
       envRaw[i] = rel <= 0 ? 0 : Math.pow(rel, 1.9);
     }
 
