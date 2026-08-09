@@ -245,7 +245,7 @@
   var bassHist = [], level = 0, amp = 0, bassSmooth = 0;
   var beatEnv = 0, lastBeatAt = 0;
 
-  var N_PTS = 96;                             // número de puntitos
+  var N_PTS = 82;                             // número de puntitos
   var ys = new Float32Array(N_PTS + 1);       // extensión de cada puntito
   var bandV = new Float32Array(N_PTS + 1);    // envolvente suavizada
   var envRaw = new Float32Array(N_PTS + 1);   // envolvente cruda
@@ -321,7 +321,7 @@
     actx = new AC();
     analyser = actx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.3;
+    analyser.smoothingTimeConstant = 0.45;
     freqData = new Uint8Array(analyser.frequencyBinCount);
     timeData = new Uint8Array(analyser.fftSize);
     srcNode = actx.createMediaElementSource(audio);
@@ -482,11 +482,11 @@
       bandV[i] = s / c;
     }
 
-    // extensión final: reacción veloz en ambas direcciones — sube al
-    // instante y cae rápido, para ver puntitos y líneas a la vez
+    // extensión final: movimiento con un pelín de inercia — sube con un
+    // delay cortito y cae con calma
     for (i = 0; i <= N_PTS; i++){
       var target = bandV[i];
-      ys[i] += (target - ys[i]) * (target > ys[i] ? 0.85 : 0.4);
+      ys[i] += (target - ys[i]) * (target > ys[i] ? 0.45 : 0.20);
     }
   }
 
@@ -512,7 +512,7 @@
     var slot = W / (N_PTS + 1);
     var active = amp > 0.015;
     // puntitos: cada uno se estira en línea vertical con su frecuencia
-    var scale = H * 0.15 * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
+    var scale = H * 0.24 * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
     g.strokeStyle = active ? '#111113' : '#DDD9D2';
     g.lineWidth = 2.4;
     g.lineCap = 'round';
