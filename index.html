@@ -352,7 +352,7 @@
     actx = new AC();
     analyser = actx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.4;
+    analyser.smoothingTimeConstant = 0.22;
     freqData = new Uint8Array(analyser.frequencyBinCount);
     timeData = new Uint8Array(analyser.fftSize);
     srcNode = actx.createMediaElementSource(audio);
@@ -486,7 +486,7 @@
       var edge = Math.min(1, Math.min(i, N_PTS - i) / 7);
       var target = bandV[i] * carrier * edge;
       // respuesta: graves amortiguados, agudos inmediatos
-      ys[i] += (target - ys[i]) * (0.18 + d2 * 0.55);
+      ys[i] += (target - ys[i]) * (0.38 + d2 * 0.45);
     }
   }
 
@@ -527,7 +527,7 @@
 
     // amplitud general: sigue el volumen, cae suave al pausar
     var target = playing ? Math.min(1, level * 1.4 + bassSmooth * 0.9) : 0;
-    amp += (target - amp) * (playing ? 0.45 : 0.06);
+    amp += (target - amp) * (playing ? 0.6 : 0.06);
 
     g.fillStyle = '#050506';
     g.fillRect(0, 0, W, H);
