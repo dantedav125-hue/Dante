@@ -245,8 +245,8 @@
   var bassHist = [], level = 0, amp = 0, bassSmooth = 0;
   var beatEnv = 0, lastBeatAt = 0;
 
-  var N_PTS = 160;
-  var ys = new Float32Array(N_PTS + 1);       // forma suavizada
+  var N_PTS = 96;                             // número de puntitos
+  var ys = new Float32Array(N_PTS + 1);       // extensión de cada puntito
   var bandV = new Float32Array(N_PTS + 1);    // envolvente suavizada
   var envRaw = new Float32Array(N_PTS + 1);   // envolvente cruda
   var bandNorm = new Float32Array(N_PTS + 1); // máximo adaptativo por banda
@@ -440,10 +440,11 @@
   }
 
   /* ============ la onda ============
-     Espectrograma melódico: cada frecuencia tiene su lugar fijo en la
-     línea (45 Hz a la izq → 4.2 kHz a la der). Cuando suena una nota, su
-     punto brinca hacia arriba al instante y cae suave — un arp A7→C7→E7
-     se ve como bumps que saltan en el lugar exacto de cada nota. */
+     Fila de puntitos sobre una línea recta: cada puntito es una banda de
+     frecuencia (45 Hz izq → 4.2 kHz der). Cuando su frecuencia suena, el
+     puntito se estira en una línea vertical (arriba y abajo) al instante
+     y se encoge suave — un arp se ve como líneas saltando de puntito en
+     puntito siguiendo la melodía. */
   var lastFrame = performance.now();
 
   function updateShape(){
@@ -462,22 +463,22 @@
       envRaw[i] = Math.pow(Math.min(1, v / Math.max(bn, 0.06)), 1.25);
     }
 
-    // suavizado espacial amplio: colinas suaves, cero picos nerviosos
+    // suavizado mínimo: solo con el vecino inmediato, para conservar
+    // el detalle de picos angostos (notas individuales)
     for (i = 0; i <= N_PTS; i++){
       var s = 0, c = 0;
-      for (j = -6; j <= 6; j++){
+      for (j = -1; j <= 1; j++){
         var k = i + j;
         if (k >= 0 && k <= N_PTS){ s += envRaw[k]; c++; }
       }
       bandV[i] = s / c;
     }
 
-    // forma final: solo hacia arriba, ataque instantáneo y caída suave —
-    // como la envolvente de una nota tocada
+    // extensión final: ataque instantáneo, caída suave — sin desvanecido
+    // en bordes (eso creaba la "U invertida")
     for (i = 0; i <= N_PTS; i++){
-      var edge = Math.sin((i / N_PTS) * Math.PI);
-      var target = bandV[i] * Math.pow(edge, 0.6);
-      ys[i] += (target - ys[i]) * (target > ys[i] ? 0.6 : 0.09);
+      var target = bandV[i];
+      ys[i] += (target - ys[i]) * (target > ys[i] ? 0.6 : 0.10);
     }
   }
 
@@ -500,32 +501,21 @@
     else for (var k = 0; k <= N_PTS; k++) ys[k] *= 0.94;
 
     var midY = H / 2;
-    if (amp > 0.015){
-      // bumps solo hacia arriba desde la línea base, amplitud contenida
-      var scale = H * 0.17 * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
-      g.strokeStyle = '#111113';
-      g.lineWidth = 2.6;
-      g.lineJoin = 'round';
-      g.lineCap = 'round';
-      g.beginPath();
-      var x0 = 0, y0 = midY - ys[0] * scale;
-      g.moveTo(x0, y0);
-      for (var i = 1; i <= N_PTS; i++){
-        var x = (i / N_PTS) * W;
-        var y = midY - ys[i] * scale;
-        g.quadraticCurveTo(x0, y0, (x0 + x) / 2, (y0 + y) / 2);
-        x0 = x; y0 = y;
-      }
-      g.lineTo(x0, y0);
-      g.stroke();
-    } else {
-      g.strokeStyle = '#DDD9D2';
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(0, midY);
-      g.lineTo(W, midY);
-      g.stroke();
+    var slot = W / (N_PTS + 1);
+    var active = amp > 0.015;
+    // puntitos: cada uno se estira en línea vertical con su frecuencia
+    var scale = H * 0.15 * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
+    g.strokeStyle = active ? '#111113' : '#DDD9D2';
+    g.lineWidth = 2.4;
+    g.lineCap = 'round';
+    g.beginPath();
+    for (var i = 0; i <= N_PTS; i++){
+      var x = (i + 0.5) * slot;
+      var len = active ? Math.max(0.6, ys[i] * scale) : 0.6;
+      g.moveTo(x, midY - len);
+      g.lineTo(x, midY + len);
     }
+    g.stroke();
 
     drawThumb();
 
