@@ -439,24 +439,26 @@
     }
   }
 
-  /* ============ render: una sola línea que baila con la música ============
-     La forma no es la señal cruda: cada punto de la línea responde a una
-     banda de frecuencia. El bajo mueve el centro, los agudos las orillas,
-     y una ola viajera le da el movimiento fluido. */
+  /* ============ render: una sola línea, espectro de izquierda a derecha ====
+     La línea es un ecualizador continuo: izquierda = graves (kick/808),
+     centro = medios (voces, melodía), derecha = agudos (hats). La altura de
+     cada zona sigue el volumen de su banda, con una ola que le da fluidez. */
   var lastFrame = performance.now();
   var phase = 0;
 
   function updateShape(){
-    var half = N_PTS / 2;
+    var binHz = (actx ? actx.sampleRate : 48000) / analyser.fftSize;
     for (var i = 0; i <= N_PTS; i++){
-      var d = Math.abs(i - half) / half;            // 0 = centro, 1 = orilla
-      // centro → graves (kick/808), orillas → agudos (hats), escala log
-      var bin = Math.round(2 + Math.pow(d, 1.7) * 380);
+      var d = i / N_PTS;                            // 0 = izquierda, 1 = derecha
+      // 40 Hz (izq) → 12 kHz (der) en escala logarítmica
+      var f = 40 * Math.pow(300, d);
+      var bin = Math.max(1, Math.round(f / binHz));
       var m = (freqData[bin] + freqData[bin + 1] + freqData[bin + 2]) / (3 * 255);
       var env = Math.pow(m, 1.4);                   // contraste: silencio = plano
-      var carrier = Math.sin(i * 0.32 + phase) * 0.75
-                  + Math.sin(i * 0.13 - phase * 0.6) * 0.25;
-      var edge = Math.sin((i / N_PTS) * Math.PI);   // desvanecer en bordes
+      var carrier = Math.sin(i * 0.30 + phase) * 0.8
+                  + Math.sin(i * 0.12 - phase * 0.6) * 0.2;
+      // anclar solo los extremos, sin apagar graves ni agudos
+      var edge = Math.min(1, Math.min(i, N_PTS - i) / 7);
       var target = env * carrier * edge;
       ys[i] += (target - ys[i]) * 0.30;             // fluidez entre cuadros
     }
