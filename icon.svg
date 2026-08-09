@@ -1,11 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#050506"/>
-  <g fill="#F2EFEA">
-    <rect x="96"  y="216" width="24" height="80"  rx="12"/>
-    <rect x="152" y="176" width="24" height="160" rx="12"/>
-    <rect x="208" y="136" width="24" height="240" rx="12"/>
-    <rect x="264" y="96"  width="24" height="320" rx="12"/>
-    <rect x="320" y="156" width="24" height="200" rx="12"/>
-    <rect x="376" y="196" width="24" height="120" rx="12"/>
-  </g>
+  <rect width="512" height="512" rx="112" fill="#FBFBF9"/>
+  <path d="M64 256 C 128 256, 144 176, 192 176 S 256 336, 320 336 S 384 216, 448 256"
+        fill="none" stroke="#111113" stroke-width="22" stroke-linecap="round"/>
 </svg>

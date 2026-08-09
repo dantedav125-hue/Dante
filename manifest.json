@@ -1,12 +1,12 @@
 {
   "name": "PULSO — Reproductor de beats",
   "short_name": "PULSO",
-  "description": "Reproductor de audio con visualizador de onda y efectos que reaccionan al ritmo.",
+  "description": "Reproductor de audio con onda minimalista sincronizada al beat, pensado para grabar clips aesthetic.",
   "start_url": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#060608",
-  "theme_color": "#060608",
+  "background_color": "#FBFBF9",
+  "theme_color": "#FBFBF9",
   "icons": [
     {
       "src": "icon.svg",
