@@ -321,7 +321,7 @@
     actx = new AC();
     analyser = actx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.55;
+    analyser.smoothingTimeConstant = 0.3;
     freqData = new Uint8Array(analyser.frequencyBinCount);
     timeData = new Uint8Array(analyser.fftSize);
     srcNode = actx.createMediaElementSource(audio);
@@ -460,7 +460,12 @@
       var bn = bandNorm[i];
       bn += (v > bn ? 0.3 : 0.012) * (v - bn);
       bandNorm[i] = bn;
-      envRaw[i] = Math.pow(Math.min(1, v / Math.max(bn, 0.06)), 1.25);
+      // compuerta de contraste: en beats bien masterizados todo anda cerca
+      // del máximo, así que solo lo que supera el umbral se estira — el
+      // resto se queda de puntito
+      var rel = Math.min(1, v / Math.max(bn, 0.06));
+      rel = (rel - 0.38) / 0.62;
+      envRaw[i] = rel <= 0 ? 0 : Math.pow(rel, 1.9);
     }
 
     // suavizado mínimo: solo con el vecino inmediato, para conservar
@@ -474,11 +479,11 @@
       bandV[i] = s / c;
     }
 
-    // extensión final: ataque instantáneo, caída suave — sin desvanecido
-    // en bordes (eso creaba la "U invertida")
+    // extensión final: reacción veloz en ambas direcciones — sube al
+    // instante y cae rápido, para ver puntitos y líneas a la vez
     for (i = 0; i <= N_PTS; i++){
       var target = bandV[i];
-      ys[i] += (target - ys[i]) * (target > ys[i] ? 0.6 : 0.10);
+      ys[i] += (target - ys[i]) * (target > ys[i] ? 0.85 : 0.4);
     }
   }
 
