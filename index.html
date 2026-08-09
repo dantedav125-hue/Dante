@@ -457,7 +457,7 @@
       var f = 40 * Math.pow(300, d);
       var bin = Math.max(1, Math.round(f / binHz));
       var m = (freqData[bin] + freqData[bin + 1] + freqData[bin + 2]) / (3 * 255);
-      var v = Math.pow(m, 1.6) * (0.45 + d * 1.55);  // tilt: compensa graves
+      var v = Math.pow(m, 1.6) * (0.28 + d * 1.85);  // tilt: compensa graves
       bandV[i] = v;
       if (v > fmax) fmax = v;
     }
@@ -470,7 +470,7 @@
     // 3) forma final: espectro relativo × ola fina
     for (i = 0; i <= N_PTS; i++){
       var env = Math.pow(Math.min(1, bandV[i] * inv), 1.3);
-      var carrier = Math.sin(i * 0.5 + phase);
+      var carrier = Math.sin(i * 0.26 + phase);
       var edge = Math.min(1, Math.min(i, N_PTS - i) / 7);
       var target = env * carrier * edge;
       ys[i] += (target - ys[i]) * 0.45;
@@ -482,6 +482,7 @@
     g.globalAlpha = alpha;
     g.lineWidth = width;
     g.lineJoin = 'round';
+    g.lineCap = 'round';
     g.beginPath();
     var midY = H / 2;
     for (var i = 0; i <= N_PTS; i++){
@@ -520,7 +521,7 @@
 
     if (amp > 0.015){
       var scale = H * 0.32 * (0.10 + amp * 0.9) * (1 + beatEnv * 0.45);
-      strokeShape(0.92, 1.4, scale, grad);
+      strokeShape(0.94, 3, scale, grad);
     } else {
       var idle = REDUCED ? 0 : Math.sin(now * 0.0012) * 1.2;
       g.strokeStyle = current >= 0 ? grad : '#2A2A30';
