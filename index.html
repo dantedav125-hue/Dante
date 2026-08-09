@@ -459,7 +459,7 @@
       var f = 40 * Math.pow(300, d);
       var bin = Math.max(1, Math.round(f / binHz));
       var m = (freqData[bin] + freqData[bin + 1] + freqData[bin + 2]) / (3 * 255);
-      var v = Math.pow(m, 1.6) * (0.15 + d * 2.3);
+      var v = Math.pow(m, 1.6) * (0.12 + Math.pow(d, 1.3) * 3.6);
       bandV[i] = v;
       if (v > fmax) fmax = v;
     }
