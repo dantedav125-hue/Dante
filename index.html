@@ -19,8 +19,6 @@
     --dim:#5C5A63;
     --faint:#2A2A30;
     --line:#17171B;
-    --heat-1:#FFB03A;
-    --heat-2:#FF4D6D;
   }
   *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ height:100%; }
@@ -103,7 +101,7 @@
   }
   #seek .fill{
     position:absolute; left:22px; top:50%; height:1px; width:0;
-    background:linear-gradient(90deg, var(--heat-1), var(--heat-2));
+    background:var(--ink);
   }
 
   /* ---------- dock inferior ---------- */
@@ -128,8 +126,8 @@
     transition:border-color .25s ease, box-shadow .25s ease, transform .1s ease;
   }
   #btnPlay.beat{
-    border-color:rgba(255,140,80,.55);
-    box-shadow:0 0 22px rgba(255,110,80,.18);
+    border-color:rgba(242,239,234,.5);
+    box-shadow:0 0 22px rgba(242,239,234,.12);
   }
   #btnPlay svg{ width:20px; height:20px; }
 
@@ -172,8 +170,9 @@
     font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size:10px; color:var(--dim); font-variant-numeric:tabular-nums;
   }
-  #trackList li.current .tname{ color:var(--heat-1); }
-  #trackList li.current .num{ color:var(--heat-1); }
+  #trackList li.current .tname{ color:var(--ink); font-weight:600; }
+  #trackList li.current .num{ color:var(--ink); }
+  #trackList li:not(.current) .tname{ color:var(--dim); }
   #scrim{
     position:fixed; inset:0; z-index:7; background:rgba(0,0,0,.5);
     opacity:0; pointer-events:none; transition:opacity .25s ease;
@@ -514,9 +513,7 @@
     g.fillRect(0, 0, W, H);
 
     var midY = H / 2;
-    var grad = g.createLinearGradient(0, 0, W, 0);
-    grad.addColorStop(0, '#FFB03A');
-    grad.addColorStop(1, '#FF4D6D');
+    var grad = '#F2EFEA';
 
     if (playing && freqData) updateShape();
     else for (var k = 0; k <= N_PTS; k++) ys[k] *= 0.92;   // pausa: se aquieta
