@@ -350,7 +350,7 @@
     actx = new AC();
     analyser = actx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.8;
+    analyser.smoothingTimeConstant = 0.65;
     freqData = new Uint8Array(analyser.frequencyBinCount);
     timeData = new Uint8Array(analyser.fftSize);
     srcNode = actx.createMediaElementSource(audio);
@@ -454,13 +454,15 @@
       var f = 40 * Math.pow(300, d);
       var bin = Math.max(1, Math.round(f / binHz));
       var m = (freqData[bin] + freqData[bin + 1] + freqData[bin + 2]) / (3 * 255);
-      var env = Math.pow(m, 1.4);                   // contraste: silencio = plano
-      var carrier = Math.sin(i * 0.30 + phase) * 0.8
-                  + Math.sin(i * 0.12 - phase * 0.6) * 0.2;
+      // compensar la balanza espectral: los graves traen mucha más energía
+      // que los agudos, así que se atenúa la izquierda y se amplifica la derecha
+      var gain = 0.38 + d * 1.9;
+      var env = Math.pow(Math.min(1, m * gain * 1.8), 1.15);
+      var carrier = Math.sin(i * 0.22 + phase);
       // anclar solo los extremos, sin apagar graves ni agudos
       var edge = Math.min(1, Math.min(i, N_PTS - i) / 7);
       var target = env * carrier * edge;
-      ys[i] += (target - ys[i]) * 0.30;             // fluidez entre cuadros
+      ys[i] += (target - ys[i]) * 0.45;             // respuesta más directa
     }
   }
 
@@ -489,11 +491,11 @@
     analyse();
     beatEnv *= Math.pow(0.03, dt);
 
-    // la ola viaja más rápido cuando la música pega más fuerte
-    phase += dt * (1.6 + level * 10 + beatEnv * 6);
+    // ola viajera con velocidad estable (acelera apenas con la intensidad)
+    phase += dt * (2.2 + level * 3.5);
 
-    // amplitud general: la manda el bajo, cae suave al pausar
-    var target = playing ? Math.min(1, level * 1.6 + bassSmooth * 1.1) : 0;
+    // amplitud general: sigue el volumen, cae suave al pausar
+    var target = playing ? Math.min(1, level * 1.4 + bassSmooth * 0.9) : 0;
     amp += (target - amp) * (playing ? 0.3 : 0.06);
 
     g.fillStyle = '#050506';
