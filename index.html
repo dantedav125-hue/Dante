@@ -245,7 +245,7 @@
 </div>
 
 <div id="toast"></div>
-<input type="file" id="filePick" accept="audio/*" multiple hidden>
+<input type="file" id="filePick" multiple hidden>
 
 <script>
 (function(){
@@ -327,6 +327,9 @@
     });
     audio.addEventListener('play',  function(){ setPlaying(true);  });
     audio.addEventListener('pause', function(){ setPlaying(false); });
+    audio.addEventListener('error', function(){
+      if (current >= 0) toast('No pude reproducir "' + tracks[current].name + '"');
+    });
   }
 
   function ensureGraph(){
@@ -408,7 +411,10 @@
     var added = 0;
     for (var i = 0; i < fileList.length; i++){
       var f = fileList[i];
-      if (f.type && f.type.indexOf('audio') !== 0 && !/\.(mp3|wav|m4a|aac|ogg|flac|opus|webm)$/i.test(f.name)) continue;
+      var byType = f.type && (f.type.indexOf('audio') === 0 || f.type.indexOf('video') === 0);
+      var byExt = /\.(mp3|wav|m4a|aac|ogg|oga|flac|opus|webm|aif|aiff|caf)$/i.test(f.name);
+      var unknown = !f.type || f.type === 'application/octet-stream';
+      if (!byType && !byExt && !unknown) continue;
       tracks.push({
         name: f.name.replace(/\.[^.]+$/, ''),
         url: URL.createObjectURL(f),
