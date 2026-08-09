@@ -440,12 +440,11 @@
   }
 
   /* ============ la onda ============
-     Una sola onda negra sobre blanco. El rango va de 45 Hz a 4.2 kHz:
-     el extremo derecho son los medios-altos (plucks, melodías), no los
-     agudos brillantes que estos beats casi no traen. Así una melodía que
-     baja de escala se ve viajando de derecha a izquierda por la onda. */
+     Espectrograma melódico: cada frecuencia tiene su lugar fijo en la
+     línea (45 Hz a la izq → 4.2 kHz a la der). Cuando suena una nota, su
+     punto brinca hacia arriba al instante y cae suave — un arp A7→C7→E7
+     se ve como bumps que saltan en el lugar exacto de cada nota. */
   var lastFrame = performance.now();
-  var phase = 0;
 
   function updateShape(){
     var binHz = (actx ? actx.sampleRate : 48000) / analyser.fftSize;
@@ -473,12 +472,12 @@
       bandV[i] = s / c;
     }
 
-    // forma final: envolvente × ola lenta y ancha
+    // forma final: solo hacia arriba, ataque instantáneo y caída suave —
+    // como la envolvente de una nota tocada
     for (i = 0; i <= N_PTS; i++){
       var edge = Math.sin((i / N_PTS) * Math.PI);
-      var carrier = Math.sin(i * 0.155 + phase);
-      var target = bandV[i] * carrier * Math.pow(edge, 0.6);
-      ys[i] += (target - ys[i]) * 0.16;          // movimiento sereno
+      var target = bandV[i] * Math.pow(edge, 0.6);
+      ys[i] += (target - ys[i]) * (target > ys[i] ? 0.6 : 0.09);
     }
   }
 
@@ -490,7 +489,6 @@
 
     analyse();
     beatEnv *= Math.pow(0.03, dt);
-    phase += dt * (0.9 + level * 1.1);           // ola lenta, apenas acelera
 
     var target = playing ? Math.min(1, level * 1.4 + bassSmooth * 0.9) : 0;
     amp += (target - amp) * (playing ? 0.25 : 0.06);
@@ -503,18 +501,18 @@
 
     var midY = H / 2;
     if (amp > 0.015){
-      // amplitud contenida: la onda vive en el tercio central
-      var scale = H * 0.10 * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
+      // bumps solo hacia arriba desde la línea base, amplitud contenida
+      var scale = H * 0.17 * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
       g.strokeStyle = '#111113';
       g.lineWidth = 2.6;
       g.lineJoin = 'round';
       g.lineCap = 'round';
       g.beginPath();
-      var x0 = 0, y0 = midY + ys[0] * scale;
+      var x0 = 0, y0 = midY - ys[0] * scale;
       g.moveTo(x0, y0);
       for (var i = 1; i <= N_PTS; i++){
         var x = (i / N_PTS) * W;
-        var y = midY + ys[i] * scale;
+        var y = midY - ys[i] * scale;
         g.quadraticCurveTo(x0, y0, (x0 + x) / 2, (y0 + y) / 2);
         x0 = x; y0 = y;
       }
