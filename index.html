@@ -282,6 +282,8 @@
 
   var N_PTS = 160;                          // puntos de la curva
   var ys = new Float32Array(N_PTS + 1);     // forma suavizada entre cuadros
+  var bandV = new Float32Array(N_PTS + 1);  // volumen crudo por banda
+  var norm = 0;                             // normalizador adaptativo
 
   /* ============ DOM ============ */
   var cv = document.getElementById('cv');
@@ -448,21 +450,31 @@
 
   function updateShape(){
     var binHz = (actx ? actx.sampleRate : 48000) / analyser.fftSize;
-    for (var i = 0; i <= N_PTS; i++){
-      var d = i / N_PTS;                            // 0 = izquierda, 1 = derecha
-      // 40 Hz (izq) → 12 kHz (der) en escala logarítmica
+    var i, fmax = 0;
+
+    // 1) volumen de cada banda (izq graves → der agudos, escala log)
+    for (i = 0; i <= N_PTS; i++){
+      var d = i / N_PTS;
       var f = 40 * Math.pow(300, d);
       var bin = Math.max(1, Math.round(f / binHz));
       var m = (freqData[bin] + freqData[bin + 1] + freqData[bin + 2]) / (3 * 255);
-      // compensar la balanza espectral: los graves traen mucha más energía
-      // que los agudos, así que se atenúa la izquierda y se amplifica la derecha
-      var gain = 0.38 + d * 1.9;
-      var env = Math.pow(Math.min(1, m * gain * 1.8), 1.15);
-      var carrier = Math.sin(i * 0.22 + phase);
-      // anclar solo los extremos, sin apagar graves ni agudos
+      var v = Math.pow(m, 1.6) * (0.45 + d * 1.55);  // tilt: compensa graves
+      bandV[i] = v;
+      if (v > fmax) fmax = v;
+    }
+
+    // 2) normalizar contra la banda más fuerte del momento: así siempre hay
+    //    contraste entre zonas, aunque la mezcla esté muy cargada
+    norm += (fmax > norm ? 0.5 : 0.05) * (fmax - norm);
+    var inv = norm > 0.0001 ? 1 / norm : 0;
+
+    // 3) forma final: espectro relativo × ola fina
+    for (i = 0; i <= N_PTS; i++){
+      var env = Math.pow(Math.min(1, bandV[i] * inv), 1.3);
+      var carrier = Math.sin(i * 0.5 + phase);
       var edge = Math.min(1, Math.min(i, N_PTS - i) / 7);
       var target = env * carrier * edge;
-      ys[i] += (target - ys[i]) * 0.45;             // respuesta más directa
+      ys[i] += (target - ys[i]) * 0.45;
     }
   }
 
@@ -510,7 +522,7 @@
     else for (var k = 0; k <= N_PTS; k++) ys[k] *= 0.92;   // pausa: se aquieta
 
     if (amp > 0.015){
-      var scale = H * 0.30 * (0.25 + amp) * (1 + beatEnv * 0.45);
+      var scale = H * 0.32 * (0.10 + amp * 0.9) * (1 + beatEnv * 0.45);
       if (!REDUCED) strokeShape(0.10 + beatEnv * 0.25, 7 + beatEnv * 9, scale, grad);
       strokeShape(0.92, 1.4, scale, grad);
     } else {
