@@ -249,6 +249,7 @@
   var ys = new Float32Array(N_PTS + 1);       // extensión de cada puntito
   var bandV = new Float32Array(N_PTS + 1);    // envolvente suavizada
   var envRaw = new Float32Array(N_PTS + 1);   // envolvente cruda
+  var bells = new Float32Array(N_PTS + 1);    // espectro redibujado en campanas
   var bandNorm = new Float32Array(N_PTS + 1); // máximo adaptativo por banda
 
   /* ============ DOM ============ */
@@ -470,44 +471,35 @@
       envRaw[i] = rel <= 0 ? 0 : Math.pow(rel, 1.9) * 0.8;
     }
 
-    // campana de Gauss en los graves: el bajo desparrama energía en muchas
-    // bandas a la vez y llenaba toda su zona. Aquí se concentra en una
-    // campana angosta centrada en la media de su energía — un pico delgado
-    // en lugar de un bloque ancho
-    var BZ = Math.round(N_PTS * 0.32);
-    var sumE = 0, sumIE = 0, peakE = 0;
-    for (i = 0; i <= BZ; i++){
-      sumE += envRaw[i];
-      sumIE += i * envRaw[i];
-      if (envRaw[i] > peakE) peakE = envRaw[i];
-    }
-    if (sumE > 0.001){
-      var cIdx = sumIE / sumE;
-      var SIG = 1.5;                          // qué tan angosta es la campana
-      for (i = 0; i <= BZ; i++){
-        var dd = i - cIdx;
-        var bell = peakE * Math.exp(-(dd * dd) / (2 * SIG * SIG));
-        var blend = i > BZ - 3 ? (BZ - i) / 3 : 1;   // transición suave
-        envRaw[i] = bell * blend + envRaw[i] * (1 - blend);
-      }
-    }
-
-    // suavizado mínimo: solo con el vecino inmediato, para conservar
-    // el detalle de picos angostos (notas individuales)
+    // campanas en TODO el espectro: cada sonido se concentra en su pico.
+    // Se detectan los máximos locales y el espectro se redibuja como
+    // campanas de Gauss — más anchas en los graves (sonidos gruesos) y
+    // cada vez más delgadas hacia arriba, con límite
+    for (i = 0; i <= N_PTS; i++) bells[i] = 0;
     for (i = 0; i <= N_PTS; i++){
-      var s = 0, c = 0;
-      for (j = -1; j <= 1; j++){
-        var k = i + j;
-        if (k >= 0 && k <= N_PTS){ s += envRaw[k]; c++; }
+      var e = envRaw[i];
+      if (e < 0.03) continue;
+      var lft = i > 0 ? envRaw[i - 1] : 0;
+      var rgt = i < N_PTS ? envRaw[i + 1] : 0;
+      if (e < lft || e < rgt) continue;             // solo picos locales
+      var dp = i / N_PTS;
+      var sig = Math.max(0.7, 1.6 - dp * 0.9);      // graves 1.6 → altos 0.7
+      var span = Math.ceil(sig * 3);
+      for (j = Math.max(0, i - span); j <= Math.min(N_PTS, i + span); j++){
+        var dd = j - i;
+        var b = e * Math.exp(-(dd * dd) / (2 * sig * sig));
+        if (b > bells[j]) bells[j] = b;
       }
-      bandV[i] = s / c;
     }
+    for (i = 0; i <= N_PTS; i++) bandV[i] = bells[i];
 
-    // extensión final: movimiento con un pelín de inercia — sube con un
-    // delay cortito y cae con calma
+    // extensión final: los graves reaccionan lentos y pesados, los altos
+    // rápidos y ligeros — cada zona con la inercia de su sonido
     for (i = 0; i <= N_PTS; i++){
       var target = bandV[i];
-      ys[i] += (target - ys[i]) * (target > ys[i] ? 0.45 : 0.20);
+      var dr = i / N_PTS;
+      ys[i] += (target - ys[i]) *
+        (target > ys[i] ? (0.28 + dr * 0.30) : (0.11 + dr * 0.16));
     }
   }
 
