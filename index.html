@@ -520,7 +520,6 @@
 
     if (amp > 0.015){
       var scale = H * 0.32 * (0.10 + amp * 0.9) * (1 + beatEnv * 0.45);
-      if (!REDUCED) strokeShape(0.10 + beatEnv * 0.25, 7 + beatEnv * 9, scale, grad);
       strokeShape(0.92, 1.4, scale, grad);
     } else {
       var idle = REDUCED ? 0 : Math.sin(now * 0.0012) * 1.2;
