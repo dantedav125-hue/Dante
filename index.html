@@ -152,6 +152,51 @@
   }
   #scrim.open{ opacity:1; pointer-events:auto; }
 
+  /* ---------- configuración ---------- */
+  #cfg{
+    position:fixed; left:0; right:0; bottom:0; z-index:8;
+    max-height:78vh; overflow-y:auto;
+    background:rgba(255,255,255,.98);
+    border-top:1px solid var(--line);
+    box-shadow:0 -12px 40px rgba(20,20,18,.08);
+    transform:translateY(105%);
+    transition:transform .3s cubic-bezier(.32,.72,.28,1);
+    padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 18px);
+  }
+  #cfg.open{ transform:translateY(0); }
+  #cfg .sheet-head{
+    position:sticky; top:0; background:rgba(255,255,255,.98);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 22px 10px;
+  }
+  #cfg .sheet-head h2{
+    font-size:10px; font-weight:700; letter-spacing:.34em; text-transform:uppercase; color:var(--dim);
+  }
+  .cfg-row{ padding:12px 22px 6px; }
+  .cfg-row > label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:10px; font-weight:600; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--dim); margin-bottom:10px;
+  }
+  .cfg-row > label b{
+    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px; color:var(--ink); font-weight:600; letter-spacing:0;
+    font-variant-numeric:tabular-nums;
+  }
+  .cfg-row input[type="range"]{
+    width:100%; height:28px; accent-color:#111113; touch-action:auto;
+  }
+  .seg{
+    display:flex; gap:6px; border:1px solid var(--line); border-radius:99px; padding:4px;
+  }
+  .seg button{
+    flex:1; appearance:none; border:none; background:transparent; cursor:pointer;
+    font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--dim); padding:9px 0; border-radius:99px;
+    transition:background .2s ease, color .2s ease;
+  }
+  .seg button.on{ background:#111113; color:#FBFBF9; }
+
   /* ---------- toast ---------- */
   #toast{
     position:fixed; left:50%; bottom:130px; transform:translateX(-50%) translateY(16px);
@@ -209,7 +254,52 @@
       <path d="M4 7h16M4 12h16M4 17h9"/>
     </svg>
   </button>
+  <button class="ctrl" id="btnCfg" aria-label="Configuración">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path d="M4 8h10M18 8h2M4 16h2M10 16h10"/>
+      <circle cx="16" cy="8" r="2.2"/>
+      <circle cx="8" cy="16" r="2.2"/>
+    </svg>
+  </button>
 </footer>
+
+<div id="cfg">
+  <div class="sheet-head">
+    <h2>Configuración</h2>
+    <button class="icon-btn" id="btnCloseCfg" aria-label="Cerrar configuración">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <path d="M6 6l12 12M18 6L6 18"/>
+      </svg>
+    </button>
+  </div>
+  <div class="cfg-row">
+    <label>Visualizador</label>
+    <div class="seg">
+      <button id="segDots" type="button">Puntitos</button>
+      <button id="segLine" type="button">Línea</button>
+    </div>
+  </div>
+  <div class="cfg-row">
+    <label>Puntitos <b id="vN">45</b></label>
+    <input type="range" id="rN" min="15" max="90" step="1">
+  </div>
+  <div class="cfg-row">
+    <label>Velocidad de reacción <b id="vSpeed">100%</b></label>
+    <input type="range" id="rSpeed" min="30" max="200" step="5">
+  </div>
+  <div class="cfg-row">
+    <label>Campana · graves <b id="vSigL">1.6</b></label>
+    <input type="range" id="rSigL" min="0.8" max="3" step="0.1">
+  </div>
+  <div class="cfg-row">
+    <label>Campana · agudos <b id="vSigH">0.7</b></label>
+    <input type="range" id="rSigH" min="0.4" max="1.5" step="0.05">
+  </div>
+  <div class="cfg-row">
+    <label>Umbral de pico <b id="vThr">3%</b></label>
+    <input type="range" id="rThr" min="1" max="30" step="1">
+  </div>
+</div>
 
 <div id="scrim"></div>
 <div id="sheet">
@@ -245,12 +335,26 @@
   var bassHist = [], level = 0, amp = 0, bassSmooth = 0;
   var beatEnv = 0, lastBeatAt = 0;
 
-  var N_PTS = 44;                             // número de puntitos
-  var ys = new Float32Array(N_PTS + 1);       // extensión de cada puntito
-  var bandV = new Float32Array(N_PTS + 1);    // envolvente suavizada
-  var envRaw = new Float32Array(N_PTS + 1);   // envolvente cruda
-  var bells = new Float32Array(N_PTS + 1);    // espectro redibujado en campanas
-  var bandNorm = new Float32Array(N_PTS + 1); // máximo adaptativo por banda
+  /* ============ configuración (persistente) ============ */
+  var CFG = { mode:'dots', n:45, speed:1, sigL:1.6, sigH:0.7, thr:0.03 };
+  try{
+    var saved = JSON.parse(localStorage.getItem('pulso-cfg') || '{}');
+    for (var ck in CFG) if (saved[ck] !== undefined) CFG[ck] = saved[ck];
+  }catch(e){}
+  function saveCfg(){
+    try{ localStorage.setItem('pulso-cfg', JSON.stringify(CFG)); }catch(e){}
+  }
+
+  var N_PTS, ys, bandV, envRaw, bells, bandNorm;
+  function setN(n){
+    N_PTS = n - 1;                            // n puntitos → índices 0..n-1
+    ys = new Float32Array(N_PTS + 1);         // extensión de cada puntito
+    bandV = new Float32Array(N_PTS + 1);      // envolvente suavizada
+    envRaw = new Float32Array(N_PTS + 1);     // envolvente cruda
+    bells = new Float32Array(N_PTS + 1);      // espectro en campanas
+    bandNorm = new Float32Array(N_PTS + 1);   // máximo adaptativo por banda
+  }
+  setN(CFG.n);
 
   /* ============ DOM ============ */
   var cv = document.getElementById('cv');
@@ -475,15 +579,16 @@
     // Se detectan los máximos locales y el espectro se redibuja como
     // campanas de Gauss — más anchas en los graves (sonidos gruesos) y
     // cada vez más delgadas hacia arriba, con límite
+    var sigL = CFG.sigL, sigH = Math.min(CFG.sigH, sigL);
     for (i = 0; i <= N_PTS; i++) bells[i] = 0;
     for (i = 0; i <= N_PTS; i++){
       var e = envRaw[i];
-      if (e < 0.03) continue;
+      if (e < CFG.thr) continue;                    // umbral de pico
       var lft = i > 0 ? envRaw[i - 1] : 0;
       var rgt = i < N_PTS ? envRaw[i + 1] : 0;
       if (e < lft || e < rgt) continue;             // solo picos locales
       var dp = i / N_PTS;
-      var sig = Math.max(0.7, 1.6 - dp * 0.9);      // graves 1.6 → altos 0.7
+      var sig = Math.max(sigH, sigL - dp * (sigL - sigH));
       var span = Math.ceil(sig * 3);
       for (j = Math.max(0, i - span); j <= Math.min(N_PTS, i + span); j++){
         var dd = j - i;
@@ -498,8 +603,8 @@
     for (i = 0; i <= N_PTS; i++){
       var target = bandV[i];
       var dr = i / N_PTS;
-      ys[i] += (target - ys[i]) *
-        (target > ys[i] ? (0.28 + dr * 0.30) : (0.11 + dr * 0.16));
+      var rate = target > ys[i] ? (0.28 + dr * 0.30) : (0.11 + dr * 0.16);
+      ys[i] += (target - ys[i]) * Math.min(0.95, rate * CFG.speed);
     }
   }
 
@@ -524,19 +629,36 @@
     var midY = H / 2;
     var slot = W / (N_PTS + 1);
     var active = amp > 0.015;
-    // puntitos: cada uno se estira en línea vertical con su frecuencia
     var scale = H * 0.24 * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
     g.strokeStyle = active ? '#111113' : '#DDD9D2';
     g.lineWidth = 2.4;
     g.lineCap = 'round';
-    g.beginPath();
-    for (var i = 0; i <= N_PTS; i++){
-      var x = (i + 0.5) * slot;
-      var len = active ? Math.max(0.6, ys[i] * scale) : 0.6;
-      g.moveTo(x, midY - len);
-      g.lineTo(x, midY + len);
+
+    if (CFG.mode === 'line'){
+      // una sola línea suave que dibuja la silueta de las campanas
+      g.lineJoin = 'round';
+      g.beginPath();
+      var lx0 = 0.5 * slot, ly0 = midY - (active ? ys[0] * scale : 0);
+      g.moveTo(lx0, ly0);
+      for (var i = 1; i <= N_PTS; i++){
+        var lx = (i + 0.5) * slot;
+        var ly = midY - (active ? ys[i] * scale : 0);
+        g.quadraticCurveTo(lx0, ly0, (lx0 + lx) / 2, (ly0 + ly) / 2);
+        lx0 = lx; ly0 = ly;
+      }
+      g.lineTo(lx0, ly0);
+      g.stroke();
+    } else {
+      // puntitos: cada uno se estira en línea vertical con su frecuencia
+      g.beginPath();
+      for (var i2 = 0; i2 <= N_PTS; i2++){
+        var x = (i2 + 0.5) * slot;
+        var len = active ? Math.max(0.6, ys[i2] * scale) : 0.6;
+        g.moveTo(x, midY - len);
+        g.lineTo(x, midY + len);
+      }
+      g.stroke();
     }
-    g.stroke();
 
     drawThumb();
 
@@ -645,9 +767,62 @@
   document.getElementById('btnSheet').addEventListener('click', function(){
     sheet.classList.add('open'); scrim.classList.add('open');
   });
-  function closeSheet(){ sheet.classList.remove('open'); scrim.classList.remove('open'); }
+  function closeSheet(){
+    sheet.classList.remove('open');
+    cfgEl.classList.remove('open');
+    scrim.classList.remove('open');
+  }
   document.getElementById('btnCloseSheet').addEventListener('click', closeSheet);
   scrim.addEventListener('click', closeSheet);
+
+  /* ============ configuración: sliders ============ */
+  var cfgEl = document.getElementById('cfg');
+  var segDots = document.getElementById('segDots');
+  var segLine = document.getElementById('segLine');
+  var rN = document.getElementById('rN'),       vN = document.getElementById('vN');
+  var rSpeed = document.getElementById('rSpeed'), vSpeed = document.getElementById('vSpeed');
+  var rSigL = document.getElementById('rSigL'), vSigL = document.getElementById('vSigL');
+  var rSigH = document.getElementById('rSigH'), vSigH = document.getElementById('vSigH');
+  var rThr = document.getElementById('rThr'),   vThr = document.getElementById('vThr');
+
+  function syncCfgUI(){
+    segDots.classList.toggle('on', CFG.mode === 'dots');
+    segLine.classList.toggle('on', CFG.mode === 'line');
+    rN.value = CFG.n;               vN.textContent = CFG.n;
+    rSpeed.value = Math.round(CFG.speed * 100); vSpeed.textContent = Math.round(CFG.speed * 100) + '%';
+    rSigL.value = CFG.sigL;         vSigL.textContent = CFG.sigL.toFixed(1);
+    rSigH.value = CFG.sigH;         vSigH.textContent = CFG.sigH.toFixed(2);
+    rThr.value = Math.round(CFG.thr * 100);     vThr.textContent = Math.round(CFG.thr * 100) + '%';
+  }
+  syncCfgUI();
+
+  document.getElementById('btnCfg').addEventListener('click', function(){
+    cfgEl.classList.add('open'); scrim.classList.add('open');
+  });
+  document.getElementById('btnCloseCfg').addEventListener('click', closeSheet);
+
+  segDots.addEventListener('click', function(){ CFG.mode = 'dots'; saveCfg(); syncCfgUI(); });
+  segLine.addEventListener('click', function(){ CFG.mode = 'line'; saveCfg(); syncCfgUI(); });
+  rN.addEventListener('input', function(){
+    CFG.n = parseInt(rN.value, 10); setN(CFG.n); saveCfg();
+    vN.textContent = CFG.n;
+  });
+  rSpeed.addEventListener('input', function(){
+    CFG.speed = parseInt(rSpeed.value, 10) / 100; saveCfg();
+    vSpeed.textContent = rSpeed.value + '%';
+  });
+  rSigL.addEventListener('input', function(){
+    CFG.sigL = parseFloat(rSigL.value); saveCfg();
+    vSigL.textContent = CFG.sigL.toFixed(1);
+  });
+  rSigH.addEventListener('input', function(){
+    CFG.sigH = parseFloat(rSigH.value); saveCfg();
+    vSigH.textContent = CFG.sigH.toFixed(2);
+  });
+  rThr.addEventListener('input', function(){
+    CFG.thr = parseInt(rThr.value, 10) / 100; saveCfg();
+    vThr.textContent = rThr.value + '%';
+  });
 
   function renderList(){
     listEl.innerHTML = '';
