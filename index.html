@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="theme-color" content="#060608">
+<meta name="theme-color" content="#050506">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,11 +14,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <style>
   :root{
-    --bg:#060608;
+    --bg:#050506;
     --ink:#F2EFEA;
-    --dim:#6E6B75;
-    --line:#1C1C22;
-    --bar-future:#26262C;
+    --dim:#5C5A63;
+    --faint:#2A2A30;
+    --line:#17171B;
     --heat-1:#FFB03A;
     --heat-2:#FF4D6D;
   }
@@ -35,143 +35,144 @@
   }
   canvas#cv{ position:fixed; inset:0; width:100%; height:100%; display:block; background:var(--bg); }
 
-  /* ---------- capa de flash (beat) ---------- */
-  #flash{
-    position:fixed; inset:0; pointer-events:none; opacity:0;
-    background:radial-gradient(ellipse at 50% 50%, rgba(255,176,58,0) 40%, rgba(255,77,109,.28) 100%);
-  }
-
   /* ---------- header ---------- */
   header{
     position:fixed; top:0; left:0; right:0; z-index:5;
-    display:flex; align-items:center; gap:14px;
-    padding:calc(env(safe-area-inset-top, 0px) + 14px) 18px 12px;
-    background:linear-gradient(to bottom, rgba(6,6,8,.92), rgba(6,6,8,0));
+    display:flex; align-items:center; gap:12px;
+    padding:calc(env(safe-area-inset-top, 0px) + 18px) 22px 12px;
     pointer-events:none;
   }
   header > *{ pointer-events:auto; }
   .brand{
-    font-size:13px; font-weight:800; letter-spacing:.42em; text-indent:.42em;
-    color:var(--ink);
-    padding:6px 0;
-    transition:transform .12s ease, text-shadow .12s ease;
+    font-size:10px; font-weight:700; letter-spacing:.5em; text-indent:.5em;
+    color:var(--dim);
   }
-  .brand.beat{ transform:scale(1.06); text-shadow:0 0 18px rgba(255,140,80,.8); }
   .track-info{ flex:1; min-width:0; text-align:center; }
   #trackName{
-    font-size:12px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+    font-size:11px; font-weight:500; letter-spacing:.18em; text-transform:uppercase;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     color:var(--ink);
   }
   #time{
     font-family:ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
     font-variant-numeric:tabular-nums;
-    font-size:11px; color:var(--dim); margin-top:3px; letter-spacing:.06em;
+    font-size:10px; color:var(--dim); margin-top:4px; letter-spacing:.08em;
   }
   .icon-btn{
     appearance:none; border:none; background:transparent; color:var(--dim);
-    width:38px; height:38px; border-radius:50%;
+    width:36px; height:36px; border-radius:50%;
     display:grid; place-items:center; cursor:pointer;
-    transition:color .15s ease, background .15s ease;
+    transition:color .2s ease;
   }
-  .icon-btn:hover, .icon-btn:focus-visible{ color:var(--ink); background:rgba(255,255,255,.06); }
-  .icon-btn:focus-visible{ outline:2px solid var(--heat-1); outline-offset:2px; }
-  .icon-btn svg{ width:20px; height:20px; fill:currentColor; }
+  .icon-btn:hover, .icon-btn:focus-visible{ color:var(--ink); }
+  .icon-btn:focus-visible{ outline:1px solid var(--dim); outline-offset:3px; }
+  .icon-btn svg{ width:18px; height:18px; }
 
   /* ---------- estado vacío ---------- */
   #empty{
     position:fixed; inset:0; z-index:4;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;
     cursor:pointer; text-align:center; padding:24px;
   }
-  #empty .halo{
-    width:76px; height:76px; border-radius:50%;
-    border:1px solid var(--line);
+  #empty .ring{
+    width:64px; height:64px; border-radius:50%;
+    border:1px solid var(--faint);
     display:grid; place-items:center;
-    color:var(--heat-1);
-    animation:breathe 3.2s ease-in-out infinite;
+    color:var(--dim);
+    transition:border-color .3s ease, color .3s ease;
   }
-  #empty .halo svg{ width:26px; height:26px; fill:currentColor; }
-  @keyframes breathe{
-    0%,100%{ box-shadow:0 0 0 0 rgba(255,176,58,.0); transform:scale(1); }
-    50%{ box-shadow:0 0 34px 2px rgba(255,120,80,.22); transform:scale(1.05); }
+  #empty:hover .ring{ border-color:var(--dim); color:var(--ink); }
+  #empty .ring svg{ width:20px; height:20px; }
+  #empty p{
+    font-size:11px; color:var(--dim); letter-spacing:.32em; text-indent:.32em;
+    text-transform:uppercase; line-height:2;
   }
-  #empty h1{
-    font-size:15px; font-weight:700; letter-spacing:.34em; text-indent:.34em; text-transform:uppercase;
-    text-wrap:balance;
-  }
-  #empty p{ font-size:12.5px; color:var(--dim); letter-spacing:.04em; max-width:34ch; line-height:1.6; }
   #empty.hidden{ display:none; }
+
+  /* ---------- progreso ---------- */
+  #seek{
+    position:fixed; left:0; right:0; z-index:6;
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 108px);
+    height:28px; cursor:pointer;
+    display:none;
+  }
+  #seek.on{ display:block; }
+  #seek .rail{
+    position:absolute; left:22px; right:22px; top:50%; height:1px;
+    background:var(--faint);
+  }
+  #seek .fill{
+    position:absolute; left:22px; top:50%; height:1px; width:0;
+    background:linear-gradient(90deg, var(--heat-1), var(--heat-2));
+  }
 
   /* ---------- dock inferior ---------- */
   footer{
     position:fixed; left:0; right:0; bottom:0; z-index:5;
-    display:flex; align-items:center; justify-content:center; gap:26px;
-    padding:18px 18px calc(env(safe-area-inset-bottom, 0px) + 22px);
-    background:linear-gradient(to top, rgba(6,6,8,.94), rgba(6,6,8,0));
+    display:flex; align-items:center; justify-content:center; gap:34px;
+    padding:14px 18px calc(env(safe-area-inset-bottom, 0px) + 26px);
   }
   .ctrl{
     appearance:none; border:none; background:transparent; color:var(--dim);
-    width:46px; height:46px; border-radius:50%; cursor:pointer;
+    width:44px; height:44px; border-radius:50%; cursor:pointer;
     display:grid; place-items:center;
-    transition:color .15s ease, transform .12s ease;
+    transition:color .2s ease, transform .1s ease;
   }
   .ctrl:hover, .ctrl:focus-visible{ color:var(--ink); }
-  .ctrl:focus-visible{ outline:2px solid var(--heat-1); outline-offset:2px; }
-  .ctrl:active{ transform:scale(.92); }
-  .ctrl svg{ width:22px; height:22px; fill:currentColor; }
+  .ctrl:focus-visible{ outline:1px solid var(--dim); outline-offset:3px; }
+  .ctrl:active{ transform:scale(.94); }
+  .ctrl svg{ width:18px; height:18px; }
   #btnPlay{
-    width:68px; height:68px; color:#0A0A0C;
-    background:linear-gradient(135deg, var(--heat-1), var(--heat-2));
-    box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 8px 30px rgba(255,90,90,.35);
-    transition:transform .12s ease, box-shadow .2s ease;
+    width:58px; height:58px; color:var(--ink);
+    border:1px solid var(--faint);
+    transition:border-color .25s ease, box-shadow .25s ease, transform .1s ease;
   }
-  #btnPlay:hover{ color:#0A0A0C; }
-  #btnPlay.beat{ box-shadow:0 0 0 1px rgba(255,255,255,.15), 0 8px 46px rgba(255,120,80,.65); transform:scale(1.05); }
-  #btnPlay svg{ width:26px; height:26px; }
+  #btnPlay.beat{
+    border-color:rgba(255,140,80,.55);
+    box-shadow:0 0 22px rgba(255,110,80,.18);
+  }
+  #btnPlay svg{ width:20px; height:20px; }
 
   /* ---------- playlist ---------- */
   #sheet{
     position:fixed; left:0; right:0; bottom:0; z-index:8;
     max-height:62vh; overflow-y:auto;
-    background:rgba(12,12,15,.97);
+    background:rgba(9,9,11,.97);
     border-top:1px solid var(--line);
-    border-radius:18px 18px 0 0;
     transform:translateY(105%);
     transition:transform .3s cubic-bezier(.32,.72,.28,1);
     padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 10px);
   }
   #sheet.open{ transform:translateY(0); }
   #sheet .sheet-head{
-    position:sticky; top:0; background:rgba(12,12,15,.97);
+    position:sticky; top:0; background:rgba(9,9,11,.97);
     display:flex; align-items:center; justify-content:space-between;
-    padding:16px 20px 10px;
+    padding:18px 22px 10px;
   }
   #sheet .sheet-head h2{
-    font-size:11px; font-weight:700; letter-spacing:.3em; text-transform:uppercase; color:var(--dim);
+    font-size:10px; font-weight:700; letter-spacing:.34em; text-transform:uppercase; color:var(--dim);
   }
   #trackList{ list-style:none; }
   #trackList li{
     display:flex; align-items:center; gap:14px;
-    padding:13px 20px; cursor:pointer;
-    border-top:1px solid rgba(255,255,255,.03);
+    padding:14px 22px; cursor:pointer;
     transition:background .15s ease;
   }
-  #trackList li:hover{ background:rgba(255,255,255,.04); }
+  #trackList li:hover{ background:rgba(255,255,255,.03); }
   #trackList .num{
     font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size:11px; color:var(--dim); width:20px; text-align:right;
+    font-size:10px; color:var(--dim); width:18px; text-align:right;
     font-variant-numeric:tabular-nums;
   }
   #trackList .tname{
-    flex:1; min-width:0; font-size:13.5px; letter-spacing:.02em;
+    flex:1; min-width:0; font-size:13px; letter-spacing:.03em; color:var(--ink);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   #trackList .tdur{
     font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size:11px; color:var(--dim); font-variant-numeric:tabular-nums;
+    font-size:10px; color:var(--dim); font-variant-numeric:tabular-nums;
   }
-  #trackList li.current .tname{ color:var(--heat-1); font-weight:600; }
+  #trackList li.current .tname{ color:var(--heat-1); }
   #trackList li.current .num{ color:var(--heat-1); }
   #scrim{
     position:fixed; inset:0; z-index:7; background:rgba(0,0,0,.5);
@@ -181,55 +182,67 @@
 
   /* ---------- toast ---------- */
   #toast{
-    position:fixed; left:50%; bottom:130px; transform:translateX(-50%) translateY(20px);
-    z-index:9; background:rgba(20,20,24,.95); border:1px solid var(--line);
-    color:var(--ink); font-size:12.5px; letter-spacing:.03em;
-    padding:10px 18px; border-radius:99px; opacity:0; pointer-events:none;
+    position:fixed; left:50%; bottom:150px; transform:translateX(-50%) translateY(16px);
+    z-index:9; background:rgba(16,16,19,.95); border:1px solid var(--line);
+    color:var(--ink); font-size:12px; letter-spacing:.04em;
+    padding:9px 18px; border-radius:99px; opacity:0; pointer-events:none;
     transition:opacity .25s ease, transform .25s ease;
   }
   #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-
-  @media (prefers-reduced-motion: reduce){
-    #empty .halo{ animation:none; }
-    .brand.beat, #btnPlay.beat{ transform:none; }
-  }
 </style>
 
 <canvas id="cv"></canvas>
-<div id="flash"></div>
 
 <header>
-  <div class="brand" id="brand">PULSO</div>
+  <div class="brand">PULSO</div>
   <div class="track-info">
-    <div id="trackName">Sin pista</div>
-    <div id="time">0:00 / 0:00</div>
+    <div id="trackName"></div>
+    <div id="time"></div>
   </div>
   <button class="icon-btn" id="btnSheet" aria-label="Abrir lista de beats">
-    <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path d="M4 7h16M4 12h16M4 17h9"/>
+    </svg>
   </button>
 </header>
 
 <div id="empty">
-  <div class="halo">
-    <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+  <div class="ring">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
   </div>
-  <h1>Carga tus beats</h1>
-  <p>Toca aquí y elige tus archivos de audio. La onda se dibuja sola y los efectos se disparan con el ritmo.</p>
+  <p>Toca para cargar<br>tus beats</p>
+</div>
+
+<div id="seek">
+  <div class="rail"></div>
+  <div class="fill" id="seekFill"></div>
 </div>
 
 <footer>
   <button class="ctrl" id="btnPrev" aria-label="Anterior">
-    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM20 6v12L9.5 12z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 5v14M18 5l-9 7 9 7z"/>
+    </svg>
   </button>
   <button class="ctrl" id="btnPlay" aria-label="Reproducir">
-    <svg id="iconPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    <svg id="iconPause" viewBox="0 0 24 24" style="display:none"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+    <svg id="iconPlay" viewBox="0 0 24 24" fill="currentColor" style="margin-left:2px">
+      <path d="M8 5v14l11-7z"/>
+    </svg>
+    <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+      <path d="M7 5h3.4v14H7zm6.6 0H17v14h-3.4z"/>
+    </svg>
   </button>
   <button class="ctrl" id="btnNext" aria-label="Siguiente">
-    <svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM4 6v12l10.5-6z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 5v14M6 5l9 7-9 7z"/>
+    </svg>
   </button>
   <button class="ctrl" id="btnAdd" aria-label="Agregar beats">
-    <svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
   </button>
 </footer>
 
@@ -238,7 +251,9 @@
   <div class="sheet-head">
     <h2>Tus beats</h2>
     <button class="icon-btn" id="btnCloseSheet" aria-label="Cerrar lista">
-      <svg viewBox="0 0 24 24"><path d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <path d="M6 6l12 12M18 6L6 18"/>
+      </svg>
     </button>
   </div>
   <ul id="trackList"></ul>
@@ -251,25 +266,19 @@
 (function(){
   'use strict';
 
-  /* ============ configuración visual ============ */
-  var BAR_W = 3, BAR_GAP = 2;
-  var PX_PER_SEC = 90;
-  var PPS = PX_PER_SEC / (BAR_W + BAR_GAP);       // peaks por segundo
+  var PX_PER_SEC = 90;          // sensibilidad del arrastre para adelantar/regresar
   var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ============ estado ============ */
-  var tracks = [];        // {name, url, file, peaks:Float32Array|null, duration}
+  var tracks = [];              // {name, url, file, duration}
   var current = -1;
   var audio = null, actx = null, analyser = null, srcNode = null;
   var freqData = null, timeData = null;
   var playing = false;
 
-  var lastCt = 0, lastStamp = 0;      // interpolación de currentTime
   var scrubbing = false, scrubTime = 0;
-
-  var bassHist = [], bassSmooth = 0, level = 0;
-  var beatEnv = 0, flashEnv = 0, lastBeatAt = 0;
-  var particles = [];
+  var bassHist = [], level = 0, amp = 0;
+  var beatEnv = 0, lastBeatAt = 0;
 
   /* ============ DOM ============ */
   var cv = document.getElementById('cv');
@@ -277,11 +286,11 @@
   var elName = document.getElementById('trackName');
   var elTime = document.getElementById('time');
   var elEmpty = document.getElementById('empty');
-  var elFlash = document.getElementById('flash');
-  var brand = document.getElementById('brand');
   var btnPlay = document.getElementById('btnPlay');
   var iconPlay = document.getElementById('iconPlay');
   var iconPause = document.getElementById('iconPause');
+  var seekEl = document.getElementById('seek');
+  var seekFill = document.getElementById('seekFill');
   var sheet = document.getElementById('sheet');
   var scrim = document.getElementById('scrim');
   var listEl = document.getElementById('trackList');
@@ -338,7 +347,7 @@
     actx = new AC();
     analyser = actx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.55;
+    analyser.smoothingTimeConstant = 0.6;
     freqData = new Uint8Array(analyser.frequencyBinCount);
     timeData = new Uint8Array(analyser.fftSize);
     srcNode = actx.createMediaElementSource(audio);
@@ -356,41 +365,6 @@
     }
   }
 
-  function computePeaks(track){
-    track.file.arrayBuffer().then(function(buf){
-      var dc = actx || new (window.AudioContext || window.webkitAudioContext)();
-      return dc.decodeAudioData(buf);
-    }).then(function(ab){
-      var chs = [];
-      for (var c = 0; c < ab.numberOfChannels; c++) chs.push(ab.getChannelData(c));
-      var win = Math.max(1, Math.floor(ab.sampleRate / PPS));
-      var n = Math.ceil(ab.length / win);
-      var peaks = new Float32Array(n);
-      var max = 0;
-      for (var i = 0; i < n; i++){
-        var start = i * win, end = Math.min(start + win, ab.length);
-        var sum = 0, cnt = 0;
-        for (var s = start; s < end; s += 4){       // submuestreo x4: suficiente y rápido
-          var v = 0;
-          for (var c2 = 0; c2 < chs.length; c2++) v += chs[c2][s];
-          v /= chs.length;
-          sum += v * v; cnt++;
-        }
-        var rms = Math.sqrt(sum / Math.max(1, cnt));
-        peaks[i] = rms;
-        if (rms > max) max = rms;
-      }
-      if (max > 0){
-        for (var j = 0; j < n; j++) peaks[j] = Math.pow(peaks[j] / max, 0.75);
-      }
-      track.peaks = peaks;
-      if (!track.duration) track.duration = ab.duration;
-      renderList();
-    }).catch(function(){
-      toast('No pude leer la onda de "' + track.name + '"');
-    });
-  }
-
   function playTrack(i){
     if (i < 0 || i >= tracks.length) return;
     ensureAudio();
@@ -399,7 +373,7 @@
     var t = tracks[i];
     audio.src = t.url;
     elName.textContent = t.name;
-    if (!t.peaks) computePeaks(t);
+    seekEl.classList.add('on');
     audio.play().catch(function(){ toast('Toca ▶ para reproducir'); });
     renderList();
     if ('mediaSession' in navigator){
@@ -418,7 +392,7 @@
       tracks.push({
         name: f.name.replace(/\.[^.]+$/, ''),
         url: URL.createObjectURL(f),
-        file: f, peaks: null, duration: 0
+        file: f, duration: 0
       });
       added++;
     }
@@ -429,22 +403,9 @@
     else toast(added + (added === 1 ? ' beat agregado' : ' beats agregados'));
   }
 
-  /* ============ tiempo interpolado ============ */
-  function nowTime(){
-    if (!audio) return 0;
-    if (scrubbing) return scrubTime;
-    var ct = audio.currentTime;
-    if (audio.paused) { lastCt = ct; lastStamp = performance.now(); return ct; }
-    var p = performance.now();
-    if (ct !== lastCt){ lastCt = ct; lastStamp = p; return ct; }
-    var est = lastCt + (p - lastStamp) / 1000;
-    var d = audio.duration;
-    return isFinite(d) ? Math.min(est, d) : est;
-  }
-
   /* ============ detección de beat ============ */
   function analyse(){
-    if (!analyser || !playing) { level *= 0.94; bassSmooth *= 0.94; return; }
+    if (!analyser || !playing){ level *= 0.94; return; }
     analyser.getByteFrequencyData(freqData);
     analyser.getByteTimeDomainData(timeData);
 
@@ -457,9 +418,7 @@
       var v = (timeData[j] - 128) / 128;
       sum += v * v;
     }
-    var rms = Math.sqrt(sum / (timeData.length / 8));
-    level += (rms - level) * 0.25;
-    bassSmooth += (bass / 255 - bassSmooth) * 0.12;
+    level += (Math.sqrt(sum / (timeData.length / 8)) - level) * 0.2;
 
     bassHist.push(bass);
     if (bassHist.length > 55) bassHist.shift();
@@ -470,45 +429,34 @@
     var t = performance.now();
     if (bassHist.length > 20 && bass > 42 && bass > avg * 1.38 && t - lastBeatAt > 170){
       lastBeatAt = t;
-      onBeat(Math.min(1, (bass / Math.max(1, avg) - 1)));
+      beatEnv = Math.min(1, 0.5 + (bass / Math.max(1, avg) - 1) * 0.8);
+      btnPlay.classList.add('beat');
+      setTimeout(function(){ btnPlay.classList.remove('beat'); }, 160);
     }
   }
 
-  function onBeat(strength){
-    beatEnv = Math.min(1, 0.55 + strength * 0.8);
-    brand.classList.add('beat');
-    btnPlay.classList.add('beat');
-    setTimeout(function(){ brand.classList.remove('beat'); btnPlay.classList.remove('beat'); }, 130);
-    if (REDUCED) return;
-    flashEnv = Math.min(1, 0.35 + strength * 0.9);
-    var count = Math.min(26, Math.round(6 + strength * 22));
+  /* ============ render: una sola línea ============ */
+  var lastFrame = performance.now();
+
+  function drawLine(alpha, width, scale, gradient){
+    g.strokeStyle = gradient;
+    g.globalAlpha = alpha;
+    g.lineWidth = width;
+    g.lineJoin = 'round';
+    g.beginPath();
     var midY = H / 2;
-    for (var i = 0; i < count; i++){
-      var a = Math.random() * Math.PI * 2;
-      var sp = 40 + Math.random() * 220 * (0.5 + strength);
-      particles.push({
-        x: W / 2, y: midY,
-        vx: Math.cos(a) * sp,
-        vy: Math.sin(a) * sp * 0.65 - 30,
-        life: 1,
-        decay: 0.9 + Math.random() * 1.4,
-        size: 1 + Math.random() * 2.2,
-        warm: Math.random()
-      });
+    var n = 140;                              // puntos de la curva
+    var span = Math.floor(timeData.length / n);
+    for (var i = 0; i <= n; i++){
+      var x = (i / n) * W;
+      var v = (timeData[Math.min(timeData.length - 1, i * span)] - 128) / 128;
+      // desvanecer amplitud en los bordes
+      var edge = Math.sin((i / n) * Math.PI);
+      var y = midY + v * scale * edge;
+      if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
     }
-    if (particles.length > 260) particles.splice(0, particles.length - 260);
-  }
-
-  /* ============ render ============ */
-  var hueDrift = 0, lastFrame = performance.now();
-
-  function heatColors(){
-    var d = Math.sin(hueDrift) * 8;
-    return {
-      h1: 'hsl(' + (35 + d) + ', 100%, 61%)',
-      h2: 'hsl(' + (348 + d) + ', 100%, 65%)',
-      glow: 'hsla(' + (18 + d) + ', 100%, 60%,'
-    };
+    g.stroke();
+    g.globalAlpha = 1;
   }
 
   function draw(){
@@ -516,120 +464,55 @@
     var now = performance.now();
     var dt = Math.min(0.05, (now - lastFrame) / 1000);
     lastFrame = now;
-    hueDrift += dt * 0.25;
 
     analyse();
-    beatEnv *= Math.pow(0.02, dt);       // decae rápido
-    flashEnv *= Math.pow(0.008, dt);
-    elFlash.style.opacity = flashEnv > 0.02 ? flashEnv.toFixed(3) : 0;
+    beatEnv *= Math.pow(0.03, dt);
 
-    var col = heatColors();
-    var midX = W / 2, midY = H / 2;
+    // amplitud objetivo: respira con el nivel, cae suave al pausar
+    var target = playing ? Math.min(1, level * 3.2) : 0;
+    amp += (target - amp) * (playing ? 0.35 : 0.06);
 
-    g.fillStyle = '#060608';
+    g.fillStyle = '#050506';
     g.fillRect(0, 0, W, H);
 
-    // resplandor central que respira con el bajo
-    var glowA = 0.04 + bassSmooth * 0.30 + beatEnv * 0.12;
-    if (glowA > 0.045){
-      var rad = Math.max(60, Math.min(W, H) * (0.32 + bassSmooth * 0.25 + beatEnv * 0.1));
-      var rg = g.createRadialGradient(midX, midY, 0, midX, midY, rad);
-      rg.addColorStop(0, col.glow + (glowA).toFixed(3) + ')');
-      rg.addColorStop(1, col.glow + '0)');
-      g.fillStyle = rg;
-      g.fillRect(0, 0, W, H);
-    }
+    var midY = H / 2;
+    var grad = g.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, '#FFB03A');
+    grad.addColorStop(1, '#FF4D6D');
 
-    var t = nowTime();
-    var track = current >= 0 ? tracks[current] : null;
-    var maxH = Math.min(H * 0.30, 190);
-
-    if (track && track.peaks){
-      var peaks = track.peaks;
-      var step = BAR_W + BAR_GAP;
-      var nVisible = Math.ceil(W / step) + 2;
-      var firstIdx = Math.floor((t - midX / PX_PER_SEC) * PPS);
-
-      var grad = g.createLinearGradient(0, midY - maxH, 0, midY + maxH);
-      grad.addColorStop(0, col.h1);
-      grad.addColorStop(1, col.h2);
-
-      for (var i = 0; i < nVisible; i++){
-        var idx = firstIdx + i;
-        if (idx < 0 || idx >= peaks.length) continue;
-        var bt = idx / PPS;
-        var x = midX + (bt - t) * PX_PER_SEC;
-        var a = peaks[idx];
-        var h = Math.max(2, a * maxH);
-
-        var dist = Math.abs(x - midX);
-        if (dist < 60 && playing){
-          h *= 1 + level * 1.4 * (1 - dist / 60) + beatEnv * 0.35 * (1 - dist / 60);
-        }
-        var played = bt <= t;
-        var edge = Math.min(1, Math.min(x, W - x) / 90);   // desvanecer en bordes
-        if (edge <= 0) continue;
-
-        g.globalAlpha = played ? Math.min(1, 0.45 + a * 0.8) * edge : 0.9 * edge;
-        g.fillStyle = played ? grad : '#26262C';
-        g.fillRect(x - BAR_W / 2, midY - h, BAR_W, h * 2);
-      }
-      g.globalAlpha = 1;
-
-      // línea de reproducción con bloom
-      var ph = maxH + 26 + beatEnv * 18;
-      g.fillStyle = 'rgba(242,239,234,' + (0.75 + beatEnv * 0.25) + ')';
-      g.fillRect(midX - 0.75, midY - ph, 1.5, ph * 2);
-      if (beatEnv > 0.03 && !REDUCED){
-        var br = 26 + beatEnv * 90;
-        var bg2 = g.createRadialGradient(midX, midY, 0, midX, midY, br);
-        bg2.addColorStop(0, 'rgba(255,240,220,' + (beatEnv * 0.5).toFixed(3) + ')');
-        bg2.addColorStop(1, 'rgba(255,240,220,0)');
-        g.fillStyle = bg2;
-        g.fillRect(midX - br, midY - br, br * 2, br * 2);
-      }
-    } else if (track && !track.peaks){
-      // decodificando: línea latiendo
-      g.strokeStyle = '#26262C';
-      g.lineWidth = 1;
-      g.beginPath();
-      for (var x2 = 0; x2 <= W; x2 += 4){
-        var y2 = midY + Math.sin(x2 * 0.02 + now * 0.004) * 6 * Math.sin(now * 0.002);
-        if (x2 === 0) g.moveTo(x2, y2); else g.lineTo(x2, y2);
-      }
-      g.stroke();
+    if (playing && amp > 0.01 && timeData){
+      var scale = H * 0.20 * amp * (1 + beatEnv * 0.25);
+      // halo suave (línea gruesa translúcida) + línea fina encima
+      if (!REDUCED) drawLine(0.10 + beatEnv * 0.22, 7 + beatEnv * 8, scale, grad);
+      drawLine(0.9, 1.4, scale, grad);
     } else {
-      // estado vacío: latido ambiente
-      g.fillStyle = '#1C1C22';
-      var step2 = BAR_W + BAR_GAP;
-      for (var x3 = step2 / 2; x3 < W; x3 += step2){
-        var ph2 = Math.sin(x3 * 0.045 + now * 0.0011);
-        var h2 = 3 + Math.abs(ph2) * 14 * (0.4 + 0.6 * Math.abs(Math.sin(now * 0.0006 + x3 * 0.002)));
-        g.fillRect(x3 - BAR_W / 2, midY - h2, BAR_W, h2 * 2);
+      // línea en reposo con respiración mínima
+      var idle = REDUCED ? 0 : Math.sin(now * 0.0012) * 1.2;
+      var rest = amp > 0.01 && timeData;
+      if (rest){
+        var s2 = H * 0.20 * amp;
+        drawLine(0.55, 1.4, s2, grad);
+      } else {
+        g.strokeStyle = current >= 0 ? grad : '#2A2A30';
+        g.globalAlpha = current >= 0 ? 0.5 : 1;
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(0, midY + idle);
+        g.lineTo(W, midY + idle);
+        g.stroke();
+        g.globalAlpha = 1;
       }
     }
 
-    // partículas
-    if (particles.length){
-      g.globalCompositeOperation = 'lighter';
-      for (var p = particles.length - 1; p >= 0; p--){
-        var pt = particles[p];
-        pt.life -= pt.decay * dt;
-        if (pt.life <= 0){ particles.splice(p, 1); continue; }
-        pt.x += pt.vx * dt;
-        pt.y += pt.vy * dt;
-        pt.vy -= 24 * dt;            // los destellos suben
-        pt.vx *= (1 - 1.6 * dt);
-        var c = pt.warm > 0.5 ? '255,176,58' : '255,77,109';
-        g.fillStyle = 'rgba(' + c + ',' + (pt.life * 0.85).toFixed(3) + ')';
-        g.fillRect(pt.x, pt.y, pt.size, pt.size);
-      }
-      g.globalCompositeOperation = 'source-over';
-    }
-
-    // tiempo
+    // tiempo y progreso
     if (audio && current >= 0){
+      var t = scrubbing ? scrubTime : audio.currentTime;
       elTime.textContent = fmt(t) + ' / ' + fmt(audio.duration);
+      var d = audio.duration;
+      if (isFinite(d) && d > 0){
+        var railW = W - 44;
+        seekFill.style.width = Math.max(0, Math.min(1, t / d)) * railW + 'px';
+      }
     }
   }
   requestAnimationFrame(draw);
@@ -641,7 +524,7 @@
     if (current < 0) { openPicker(); return; }
     pDown = true; dragged = false;
     pStartX = e.clientX;
-    pStartT = nowTime();
+    pStartT = audio.currentTime;
     cv.setPointerCapture(e.pointerId);
   });
   cv.addEventListener('pointermove', function(e){
@@ -650,21 +533,30 @@
     if (!dragged && Math.abs(dx) > 8){ dragged = true; scrubbing = true; }
     if (dragged){
       var d = audio && isFinite(audio.duration) ? audio.duration : Infinity;
-      scrubTime = Math.max(0, Math.min(d, pStartT - dx / PX_PER_SEC));
+      scrubTime = Math.max(0, Math.min(d, pStartT + dx / PX_PER_SEC * 5));
     }
   });
   cv.addEventListener('pointerup', function(){
     if (!pDown) return;
     pDown = false;
-    if (dragged){
-      audio.currentTime = scrubTime;
-      lastCt = scrubTime; lastStamp = performance.now();
-      scrubbing = false;
-    } else {
-      togglePlay();
-    }
+    if (dragged){ audio.currentTime = scrubTime; scrubbing = false; }
+    else togglePlay();
   });
   cv.addEventListener('pointercancel', function(){ pDown = false; scrubbing = false; });
+
+  // barra de progreso: tap o arrastre = posición directa
+  var sDown = false;
+  function seekFromX(x){
+    if (!audio || !isFinite(audio.duration)) return;
+    var frac = Math.max(0, Math.min(1, (x - 22) / (W - 44)));
+    audio.currentTime = frac * audio.duration;
+  }
+  seekEl.addEventListener('pointerdown', function(e){
+    sDown = true; seekEl.setPointerCapture(e.pointerId); seekFromX(e.clientX);
+  });
+  seekEl.addEventListener('pointermove', function(e){ if (sDown) seekFromX(e.clientX); });
+  seekEl.addEventListener('pointerup', function(){ sDown = false; });
+  seekEl.addEventListener('pointercancel', function(){ sDown = false; });
 
   function togglePlay(){
     if (!audio || current < 0) return;
