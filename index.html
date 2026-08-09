@@ -470,6 +470,28 @@
       envRaw[i] = rel <= 0 ? 0 : Math.pow(rel, 1.9) * 0.8;
     }
 
+    // campana de Gauss en los graves: el bajo desparrama energía en muchas
+    // bandas a la vez y llenaba toda su zona. Aquí se concentra en una
+    // campana angosta centrada en la media de su energía — un pico delgado
+    // en lugar de un bloque ancho
+    var BZ = Math.round(N_PTS * 0.32);
+    var sumE = 0, sumIE = 0, peakE = 0;
+    for (i = 0; i <= BZ; i++){
+      sumE += envRaw[i];
+      sumIE += i * envRaw[i];
+      if (envRaw[i] > peakE) peakE = envRaw[i];
+    }
+    if (sumE > 0.001){
+      var cIdx = sumIE / sumE;
+      var SIG = 1.5;                          // qué tan angosta es la campana
+      for (i = 0; i <= BZ; i++){
+        var dd = i - cIdx;
+        var bell = peakE * Math.exp(-(dd * dd) / (2 * SIG * SIG));
+        var blend = i > BZ - 3 ? (BZ - i) / 3 : 1;   // transición suave
+        envRaw[i] = bell * blend + envRaw[i] * (1 - blend);
+      }
+    }
+
     // suavizado mínimo: solo con el vecino inmediato, para conservar
     // el detalle de picos angostos (notas individuales)
     for (i = 0; i <= N_PTS; i++){
