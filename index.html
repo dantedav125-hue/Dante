@@ -484,21 +484,49 @@
     }
   }
 
+  /* Ilusión 3D: una "esfera" invisible en el centro empuja la cortina.
+     Las líneas se curvan a su alrededor como tela tensada — el bajo infla
+     la esfera, cada línea vibra además con su propia banda. */
   function drawCurtain(now){
-    g.fillStyle = '#F2EFEA';
+    g.strokeStyle = '#F2EFEA';
+    g.lineWidth = 1;
+    g.lineJoin = 'round';
     var slot = W / (N_PTS + 1);
+    var cx = W / 2, cy = H / 2;
+    var minD = Math.min(W, H);
+    var R = minD * (0.16 + amp * 0.34 + beatEnv * 0.12);  // radio del domo
+    var K = amp * 1.1 + beatEnv * 0.55;                   // fuerza del empuje
+    var SEG = 36;
+
     for (var i = 0; i <= N_PTS; i++){
-      var x = (i + 0.5) * slot;
+      var x0 = (i + 0.5) * slot;
       var e = ys[i];
-      // brillo base tenue + el volumen de la banda lo enciende
-      var a = 0.05 + e * (0.10 + 0.85 * amp) + beatEnv * 0.03;
+      var d = i / N_PTS;
+      var dxc = x0 - cx;
+
+      // profundidad aparente: las líneas sobre el domo se ven más presentes
+      var gph0 = Math.exp(-(dxc * dxc) / (R * R + 1));
+      var a = 0.10 + gph0 * 0.22 * (0.3 + amp) + e * 0.30 * amp;
       if (!playing && amp < 0.02){
-        // reposo: cortina tenue respirando apenas
-        a = 0.06 + (REDUCED ? 0 : Math.sin(now * 0.0011 + i * 0.35) * 0.02);
+        a = 0.08 + (REDUCED ? 0 : Math.sin(now * 0.0011 + i * 0.35) * 0.02);
       }
-      var w = 1 + e * 2.2 * amp;
-      g.globalAlpha = Math.min(1, a);
-      g.fillRect(x - w / 2, 0, w, H);
+      g.globalAlpha = Math.min(0.85, a);
+
+      g.beginPath();
+      for (var s = 0; s <= SEG; s++){
+        var y = (s / SEG) * H;
+        var dy = y - cy;
+        var r2 = dxc * dxc + dy * dy;
+        // lente gaussiana: empuje horizontal alejándose del centro
+        var push = K * Math.exp(-r2 / (R * R + 1));
+        var x = x0 + dxc * push;
+        // tensión propia de la banda: vibración fina, más ágil a la derecha
+        if (playing && !REDUCED){
+          x += Math.sin(y * 0.02 + now * 0.001 * (1.5 + d * 6) + i) * e * 7 * amp;
+        }
+        if (s === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.stroke();
     }
     g.globalAlpha = 1;
   }
