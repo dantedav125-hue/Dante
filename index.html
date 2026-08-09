@@ -277,8 +277,11 @@
   var playing = false;
 
   var scrubbing = false, scrubTime = 0;
-  var bassHist = [], level = 0, amp = 0;
+  var bassHist = [], level = 0, amp = 0, bassSmooth = 0;
   var beatEnv = 0, lastBeatAt = 0;
+
+  var N_PTS = 160;                          // puntos de la curva
+  var ys = new Float32Array(N_PTS + 1);     // forma suavizada entre cuadros
 
   /* ============ DOM ============ */
   var cv = document.getElementById('cv');
@@ -347,7 +350,7 @@
     actx = new AC();
     analyser = actx.createAnalyser();
     analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.6;
+    analyser.smoothingTimeConstant = 0.8;
     freqData = new Uint8Array(analyser.frequencyBinCount);
     timeData = new Uint8Array(analyser.fftSize);
     srcNode = actx.createMediaElementSource(audio);
@@ -419,6 +422,7 @@
       sum += v * v;
     }
     level += (Math.sqrt(sum / (timeData.length / 8)) - level) * 0.2;
+    bassSmooth += (bass / 255 - bassSmooth) * 0.18;
 
     bassHist.push(bass);
     if (bassHist.length > 55) bassHist.shift();
@@ -435,24 +439,39 @@
     }
   }
 
-  /* ============ render: una sola línea ============ */
+  /* ============ render: una sola línea que baila con la música ============
+     La forma no es la señal cruda: cada punto de la línea responde a una
+     banda de frecuencia. El bajo mueve el centro, los agudos las orillas,
+     y una ola viajera le da el movimiento fluido. */
   var lastFrame = performance.now();
+  var phase = 0;
 
-  function drawLine(alpha, width, scale, gradient){
+  function updateShape(){
+    var half = N_PTS / 2;
+    for (var i = 0; i <= N_PTS; i++){
+      var d = Math.abs(i - half) / half;            // 0 = centro, 1 = orilla
+      // centro → graves (kick/808), orillas → agudos (hats), escala log
+      var bin = Math.round(2 + Math.pow(d, 1.7) * 380);
+      var m = (freqData[bin] + freqData[bin + 1] + freqData[bin + 2]) / (3 * 255);
+      var env = Math.pow(m, 1.4);                   // contraste: silencio = plano
+      var carrier = Math.sin(i * 0.32 + phase) * 0.75
+                  + Math.sin(i * 0.13 - phase * 0.6) * 0.25;
+      var edge = Math.sin((i / N_PTS) * Math.PI);   // desvanecer en bordes
+      var target = env * carrier * edge;
+      ys[i] += (target - ys[i]) * 0.30;             // fluidez entre cuadros
+    }
+  }
+
+  function strokeShape(alpha, width, scale, gradient){
     g.strokeStyle = gradient;
     g.globalAlpha = alpha;
     g.lineWidth = width;
     g.lineJoin = 'round';
     g.beginPath();
     var midY = H / 2;
-    var n = 140;                              // puntos de la curva
-    var span = Math.floor(timeData.length / n);
-    for (var i = 0; i <= n; i++){
-      var x = (i / n) * W;
-      var v = (timeData[Math.min(timeData.length - 1, i * span)] - 128) / 128;
-      // desvanecer amplitud en los bordes
-      var edge = Math.sin((i / n) * Math.PI);
-      var y = midY + v * scale * edge;
+    for (var i = 0; i <= N_PTS; i++){
+      var x = (i / N_PTS) * W;
+      var y = midY + ys[i] * scale;
       if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
     }
     g.stroke();
@@ -468,9 +487,12 @@
     analyse();
     beatEnv *= Math.pow(0.03, dt);
 
-    // amplitud objetivo: respira con el nivel, cae suave al pausar
-    var target = playing ? Math.min(1, level * 3.2) : 0;
-    amp += (target - amp) * (playing ? 0.35 : 0.06);
+    // la ola viaja más rápido cuando la música pega más fuerte
+    phase += dt * (1.6 + level * 10 + beatEnv * 6);
+
+    // amplitud general: la manda el bajo, cae suave al pausar
+    var target = playing ? Math.min(1, level * 1.6 + bassSmooth * 1.1) : 0;
+    amp += (target - amp) * (playing ? 0.3 : 0.06);
 
     g.fillStyle = '#050506';
     g.fillRect(0, 0, W, H);
@@ -480,28 +502,23 @@
     grad.addColorStop(0, '#FFB03A');
     grad.addColorStop(1, '#FF4D6D');
 
-    if (playing && amp > 0.01 && timeData){
-      var scale = H * 0.20 * amp * (1 + beatEnv * 0.25);
-      // halo suave (línea gruesa translúcida) + línea fina encima
-      if (!REDUCED) drawLine(0.10 + beatEnv * 0.22, 7 + beatEnv * 8, scale, grad);
-      drawLine(0.9, 1.4, scale, grad);
+    if (playing && freqData) updateShape();
+    else for (var k = 0; k <= N_PTS; k++) ys[k] *= 0.92;   // pausa: se aquieta
+
+    if (amp > 0.015){
+      var scale = H * 0.30 * (0.25 + amp) * (1 + beatEnv * 0.45);
+      if (!REDUCED) strokeShape(0.10 + beatEnv * 0.25, 7 + beatEnv * 9, scale, grad);
+      strokeShape(0.92, 1.4, scale, grad);
     } else {
-      // línea en reposo con respiración mínima
       var idle = REDUCED ? 0 : Math.sin(now * 0.0012) * 1.2;
-      var rest = amp > 0.01 && timeData;
-      if (rest){
-        var s2 = H * 0.20 * amp;
-        drawLine(0.55, 1.4, s2, grad);
-      } else {
-        g.strokeStyle = current >= 0 ? grad : '#2A2A30';
-        g.globalAlpha = current >= 0 ? 0.5 : 1;
-        g.lineWidth = 1;
-        g.beginPath();
-        g.moveTo(0, midY + idle);
-        g.lineTo(W, midY + idle);
-        g.stroke();
-        g.globalAlpha = 1;
-      }
+      g.strokeStyle = current >= 0 ? grad : '#2A2A30';
+      g.globalAlpha = current >= 0 ? 0.5 : 1;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(0, midY + idle);
+      g.lineTo(W, midY + idle);
+      g.stroke();
+      g.globalAlpha = 1;
     }
 
     // tiempo y progreso
