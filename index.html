@@ -20,6 +20,21 @@
     --faint:#DDD9D2;
     --line:#ECEAE5;
   }
+  body.dark{
+    --bg:#050506;
+    --ink:#F2EFEA;
+    --dim:#6E6C75;
+    --faint:#2E2E33;
+    --line:#1A1A1F;
+  }
+  body.dark #sheet, body.dark #cfg,
+  body.dark #sheet .sheet-head, body.dark #cfg .sheet-head{
+    background:rgba(12,12,15,.98);
+  }
+  body.dark #toast{ background:rgba(20,20,24,.97); box-shadow:0 6px 24px rgba(0,0,0,.4); }
+  body.dark .seg button.on{ background:#F2EFEA; color:#050506; }
+  body.dark .cfg-row input[type="range"]{ accent-color:#F2EFEA; }
+  body.dark #trackList li:hover{ background:rgba(255,255,255,.05); }
   *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ height:100%; }
   body{
@@ -280,8 +295,27 @@
     </div>
   </div>
   <div class="cfg-row">
+    <label>Tema</label>
+    <div class="seg">
+      <button id="segLight" type="button">Blanco</button>
+      <button id="segDark" type="button">Negro</button>
+    </div>
+  </div>
+  <div class="cfg-row">
     <label>Puntitos <b id="vN">45</b></label>
     <input type="range" id="rN" min="15" max="90" step="1">
+  </div>
+  <div class="cfg-row">
+    <label>Grosor <b id="vWidth">2.4</b></label>
+    <input type="range" id="rWidth" min="1" max="8" step="0.2">
+  </div>
+  <div class="cfg-row">
+    <label>Altura máxima <b id="vMaxH">24%</b></label>
+    <input type="range" id="rMaxH" min="8" max="45" step="1">
+  </div>
+  <div class="cfg-row">
+    <label>Altura mínima <b id="vMinH">0%</b></label>
+    <input type="range" id="rMinH" min="0" max="40" step="1">
   </div>
   <div class="cfg-row">
     <label>Velocidad de reacción <b id="vSpeed">100%</b></label>
@@ -332,7 +366,8 @@
   var beatEnv = 0, lastBeatAt = 0;
 
   /* ============ configuración (persistente) ============ */
-  var CFG = { mode:'dots', n:45, speed:1, bell:1, thr:0.03 };
+  var CFG = { mode:'dots', n:45, speed:1, bell:1, thr:0.03,
+              theme:'light', width:2.4, maxH:24, minH:0 };
   try{
     var saved = JSON.parse(localStorage.getItem('pulso-cfg') || '{}');
     for (var ck in CFG) if (saved[ck] !== undefined) CFG[ck] = saved[ck];
@@ -617,7 +652,8 @@
     var target = playing ? Math.min(1, level * 1.4 + bassSmooth * 0.9) : 0;
     amp += (target - amp) * (playing ? 0.25 : 0.06);
 
-    g.fillStyle = '#FBFBF9';
+    var dark = CFG.theme === 'dark';
+    g.fillStyle = dark ? '#050506' : '#FBFBF9';
     g.fillRect(0, 0, W, H);
 
     if (playing && freqData) updateShape();
@@ -626,9 +662,12 @@
     var midY = H / 2;
     var slot = W / (N_PTS + 1);
     var active = amp > 0.015;
-    var scale = H * 0.24 * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
-    g.strokeStyle = active ? '#111113' : '#DDD9D2';
-    g.lineWidth = 2.4;
+    // área de movimiento: altura máxima y mínima configurables
+    var scale = H * (CFG.maxH / 100) * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
+    var baseLen = Math.max(0.6, scale * CFG.minH / 100);
+    g.strokeStyle = active ? (dark ? '#F2EFEA' : '#111113')
+                           : (dark ? '#2E2E33' : '#DDD9D2');
+    g.lineWidth = CFG.width;
     g.lineCap = 'round';
 
     if (CFG.mode === 'line'){
@@ -650,7 +689,7 @@
       g.beginPath();
       for (var i2 = 0; i2 <= N_PTS; i2++){
         var x = (i2 + 0.5) * slot;
-        var len = active ? Math.max(0.6, ys[i2] * scale) : 0.6;
+        var len = active ? Math.max(baseLen, ys[i2] * scale) : baseLen;
         g.moveTo(x, midY - len);
         g.lineTo(x, midY + len);
       }
@@ -675,18 +714,21 @@
     var t = scrubbing ? scrubTime : (audio ? audio.currentTime : 0);
     var frac = dur > 0 ? Math.max(0, Math.min(1, t / dur)) : 0;
 
+    var dk = CFG.theme === 'dark';
+    var cPlay = dk ? '#F2EFEA' : '#111113';
+    var cRest = dk ? '#3A3A40' : '#DDD9D2';
     if (track.peaks){
       var bw = TW / THUMB_BARS;
       var mid = TH / 2;
       for (var i = 0; i < THUMB_BARS; i++){
         var h = Math.max(1.5, track.peaks[i] * (TH * 0.46));
-        tg.fillStyle = (i + 0.5) / THUMB_BARS <= frac ? '#111113' : '#DDD9D2';
+        tg.fillStyle = (i + 0.5) / THUMB_BARS <= frac ? cPlay : cRest;
         tg.fillRect(i * bw + bw * 0.22, mid - h, bw * 0.56, h * 2);
       }
     } else {
-      tg.fillStyle = '#DDD9D2';
+      tg.fillStyle = cRest;
       tg.fillRect(0, TH / 2 - 0.75, TW, 1.5);
-      tg.fillStyle = '#111113';
+      tg.fillStyle = cPlay;
       tg.fillRect(frac * (TW - 3), TH / 2 - 4, 3, 8);
     }
   }
@@ -776,14 +818,36 @@
   var cfgEl = document.getElementById('cfg');
   var segDots = document.getElementById('segDots');
   var segLine = document.getElementById('segLine');
+  var segLight = document.getElementById('segLight');
+  var segDark = document.getElementById('segDark');
+  var rWidth = document.getElementById('rWidth'), vWidth = document.getElementById('vWidth');
+  var rMaxH = document.getElementById('rMaxH'), vMaxH = document.getElementById('vMaxH');
+  var rMinH = document.getElementById('rMinH'), vMinH = document.getElementById('vMinH');
   var rN = document.getElementById('rN'),       vN = document.getElementById('vN');
   var rSpeed = document.getElementById('rSpeed'), vSpeed = document.getElementById('vSpeed');
   var rBell = document.getElementById('rBell'), vBell = document.getElementById('vBell');
   var rThr = document.getElementById('rThr'),   vThr = document.getElementById('vThr');
 
+  function applyTheme(){
+    document.body.classList.toggle('dark', CFG.theme === 'dark');
+    var mt = document.querySelector('meta[name="theme-color"]');
+    if (!mt){
+      mt = document.createElement('meta');
+      mt.setAttribute('name', 'theme-color');
+      document.head.appendChild(mt);
+    }
+    mt.setAttribute('content', CFG.theme === 'dark' ? '#050506' : '#FBFBF9');
+  }
+  applyTheme();
+
   function syncCfgUI(){
     segDots.classList.toggle('on', CFG.mode === 'dots');
     segLine.classList.toggle('on', CFG.mode === 'line');
+    segLight.classList.toggle('on', CFG.theme !== 'dark');
+    segDark.classList.toggle('on', CFG.theme === 'dark');
+    rWidth.value = CFG.width;       vWidth.textContent = CFG.width.toFixed(1);
+    rMaxH.value = CFG.maxH;         vMaxH.textContent = CFG.maxH + '%';
+    rMinH.value = CFG.minH;         vMinH.textContent = CFG.minH + '%';
     rN.value = CFG.n;               vN.textContent = CFG.n;
     rSpeed.value = Math.round(CFG.speed * 100); vSpeed.textContent = Math.round(CFG.speed * 100) + '%';
     rBell.value = Math.round(CFG.bell * 100); vBell.textContent = Math.round(CFG.bell * 100) + '%';
@@ -798,6 +862,20 @@
 
   segDots.addEventListener('click', function(){ CFG.mode = 'dots'; saveCfg(); syncCfgUI(); });
   segLine.addEventListener('click', function(){ CFG.mode = 'line'; saveCfg(); syncCfgUI(); });
+  segLight.addEventListener('click', function(){ CFG.theme = 'light'; saveCfg(); applyTheme(); syncCfgUI(); });
+  segDark.addEventListener('click', function(){ CFG.theme = 'dark'; saveCfg(); applyTheme(); syncCfgUI(); });
+  rWidth.addEventListener('input', function(){
+    CFG.width = parseFloat(rWidth.value); saveCfg();
+    vWidth.textContent = CFG.width.toFixed(1);
+  });
+  rMaxH.addEventListener('input', function(){
+    CFG.maxH = parseInt(rMaxH.value, 10); saveCfg();
+    vMaxH.textContent = CFG.maxH + '%';
+  });
+  rMinH.addEventListener('input', function(){
+    CFG.minH = parseInt(rMinH.value, 10); saveCfg();
+    vMinH.textContent = CFG.minH + '%';
+  });
   rN.addEventListener('input', function(){
     CFG.n = parseInt(rN.value, 10); setN(CFG.n); saveCfg();
     vN.textContent = CFG.n;
