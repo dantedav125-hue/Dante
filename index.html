@@ -179,6 +179,9 @@
     padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 18px);
   }
   #cfg.open{ transform:translateY(0); }
+  #cfg{ transition:transform .3s cubic-bezier(.32,.72,.28,1), opacity .25s ease; }
+  body.tuning #cfg{ opacity:.14; }
+  body.tuning #scrim{ opacity:0; }
   #cfg .sheet-head{
     position:sticky; top:0; background:rgba(255,255,255,.98);
     display:flex; align-items:center; justify-content:space-between;
@@ -665,7 +668,7 @@
     // área de movimiento: altura máxima y mínima configurables
     var scale = H * (CFG.maxH / 100) * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
     var baseLen = Math.max(0.6, scale * CFG.minH / 100);
-    g.strokeStyle = active ? (dark ? '#F2EFEA' : '#111113')
+    g.strokeStyle = active ? (dark ? '#FFFFFF' : '#000000')
                            : (dark ? '#2E2E33' : '#DDD9D2');
     g.lineWidth = CFG.width;
     g.lineCap = 'round';
@@ -715,7 +718,7 @@
     var frac = dur > 0 ? Math.max(0, Math.min(1, t / dur)) : 0;
 
     var dk = CFG.theme === 'dark';
-    var cPlay = dk ? '#F2EFEA' : '#111113';
+    var cPlay = dk ? '#FFFFFF' : '#000000';
     var cRest = dk ? '#3A3A40' : '#DDD9D2';
     if (track.peaks){
       var bw = TW / THUMB_BARS;
@@ -891,6 +894,19 @@
   rThr.addEventListener('input', function(){
     CFG.thr = parseInt(rThr.value, 10) / 100; saveCfg();
     vThr.textContent = rThr.value + '%';
+  });
+
+  // mientras arrastras un slider, el menú se vuelve transparente para ver
+  // el visualizador moviéndose detrás
+  [rN, rSpeed, rBell, rThr, rWidth, rMaxH, rMinH].forEach(function(inp){
+    inp.addEventListener('pointerdown', function(){
+      document.body.classList.add('tuning');
+    });
+    ['pointerup', 'pointercancel'].forEach(function(ev){
+      inp.addEventListener(ev, function(){
+        document.body.classList.remove('tuning');
+      });
+    });
   });
 
   function renderList(){
