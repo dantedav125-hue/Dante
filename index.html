@@ -317,10 +317,6 @@
     <input type="range" id="rMaxH" min="8" max="45" step="1">
   </div>
   <div class="cfg-row">
-    <label>Altura mínima <b id="vMinH">0%</b></label>
-    <input type="range" id="rMinH" min="0" max="40" step="1">
-  </div>
-  <div class="cfg-row">
     <label>Velocidad de reacción <b id="vSpeed">100%</b></label>
     <input type="range" id="rSpeed" min="30" max="200" step="5">
   </div>
@@ -370,7 +366,7 @@
 
   /* ============ configuración (persistente) ============ */
   var CFG = { mode:'dots', n:45, speed:1, bell:1, thr:0.03,
-              theme:'light', width:2.4, maxH:24, minH:0 };
+              theme:'light', width:2.4, maxH:24 };
   try{
     var saved = JSON.parse(localStorage.getItem('pulso-cfg') || '{}');
     for (var ck in CFG) if (saved[ck] !== undefined) CFG[ck] = saved[ck];
@@ -665,9 +661,9 @@
     var midY = H / 2;
     var slot = W / (N_PTS + 1);
     var active = amp > 0.015;
-    // área de movimiento: altura máxima y mínima configurables
+    // área de movimiento: altura máxima configurable
     var scale = H * (CFG.maxH / 100) * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
-    var baseLen = Math.max(0.6, scale * CFG.minH / 100);
+    var baseLen = 0.6;
     g.strokeStyle = active ? (dark ? '#FFFFFF' : '#000000')
                            : (dark ? '#2E2E33' : '#DDD9D2');
     g.lineWidth = CFG.width;
@@ -825,7 +821,6 @@
   var segDark = document.getElementById('segDark');
   var rWidth = document.getElementById('rWidth'), vWidth = document.getElementById('vWidth');
   var rMaxH = document.getElementById('rMaxH'), vMaxH = document.getElementById('vMaxH');
-  var rMinH = document.getElementById('rMinH'), vMinH = document.getElementById('vMinH');
   var rN = document.getElementById('rN'),       vN = document.getElementById('vN');
   var rSpeed = document.getElementById('rSpeed'), vSpeed = document.getElementById('vSpeed');
   var rBell = document.getElementById('rBell'), vBell = document.getElementById('vBell');
@@ -850,7 +845,6 @@
     segDark.classList.toggle('on', CFG.theme === 'dark');
     rWidth.value = CFG.width;       vWidth.textContent = CFG.width.toFixed(1);
     rMaxH.value = CFG.maxH;         vMaxH.textContent = CFG.maxH + '%';
-    rMinH.value = CFG.minH;         vMinH.textContent = CFG.minH + '%';
     rN.value = CFG.n;               vN.textContent = CFG.n;
     rSpeed.value = Math.round(CFG.speed * 100); vSpeed.textContent = Math.round(CFG.speed * 100) + '%';
     rBell.value = Math.round(CFG.bell * 100); vBell.textContent = Math.round(CFG.bell * 100) + '%';
@@ -875,10 +869,6 @@
     CFG.maxH = parseInt(rMaxH.value, 10); saveCfg();
     vMaxH.textContent = CFG.maxH + '%';
   });
-  rMinH.addEventListener('input', function(){
-    CFG.minH = parseInt(rMinH.value, 10); saveCfg();
-    vMinH.textContent = CFG.minH + '%';
-  });
   rN.addEventListener('input', function(){
     CFG.n = parseInt(rN.value, 10); setN(CFG.n); saveCfg();
     vN.textContent = CFG.n;
@@ -898,7 +888,7 @@
 
   // mientras arrastras un slider, el menú se vuelve transparente para ver
   // el visualizador moviéndose detrás
-  [rN, rSpeed, rBell, rThr, rWidth, rMaxH, rMinH].forEach(function(inp){
+  [rN, rSpeed, rBell, rThr, rWidth, rMaxH].forEach(function(inp){
     inp.addEventListener('pointerdown', function(){
       document.body.classList.add('tuning');
     });
