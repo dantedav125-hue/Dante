@@ -52,17 +52,12 @@
   #hud{
     position:fixed; top:0; left:0; right:0; z-index:5;
     display:flex; flex-direction:column; align-items:center; gap:8px;
-    padding-top:calc(env(safe-area-inset-top, 0px) + 22px);
+    /* el texto arranca dentro del área 9:16 centrada, no pegado al borde de
+       la pantalla: así sobrevive el recorte a vertical en vez de quedar
+       fuera por arriba */
+    padding-top:calc(env(safe-area-inset-top, 0px) + 22px + var(--safeTop, 0px));
     pointer-events:none;
   }
-  /* con la guía activa el HUD baja para caber dentro del área 9:16,
-     así nada de lo que se ve se pierde al recortar */
-  body.guided #hud{
-    padding-top:calc(env(safe-area-inset-top, 0px) + 22px + var(--guideTop, 0px));
-  }
-  /* grabando, la pantalla muestra el propio lienzo del video —que ya trae
-     su HUD dibujado dentro—, así que el HUD de HTML sobra */
-  body.recording #hud{ display:none; }
   #thumb{
     width:170px; height:36px; display:block;
     pointer-events:auto; cursor:pointer;
@@ -91,7 +86,9 @@
     padding:14px 18px calc(env(safe-area-inset-bottom, 0px) + 24px);
     transition:opacity .6s ease;
   }
-  body.zen footer{ opacity:.10; }
+  /* mientras suena, los controles desaparecen del todo: al 10% todavía
+     asomaba el borde del botón de play dentro del recorte vertical */
+  body.zen footer{ opacity:0; }
   .ctrl{
     appearance:none; border:none; background:transparent; color:var(--dim);
     width:44px; height:44px; border-radius:50%; cursor:pointer;
@@ -234,50 +231,6 @@
   }
   .seg button.on{ background:#111113; color:#FBFBF9; }
 
-  /* ---------- grabación ---------- */
-  .cfg-btn{
-    display:block; width:calc(100% - 44px); margin:8px 22px 4px;
-    appearance:none; border:1px solid var(--ink); background:var(--ink); color:var(--bg);
-    font-size:11px; font-weight:700; letter-spacing:.18em; text-transform:uppercase;
-    padding:14px 0; border-radius:99px; cursor:pointer;
-    transition:opacity .2s ease;
-  }
-  .cfg-btn:disabled{ opacity:.3; cursor:default; }
-  .cfg-note{
-    padding:4px 22px 14px; font-size:10px; line-height:1.8;
-    color:var(--dim); letter-spacing:.03em;
-  }
-  #rec{
-    position:fixed; left:50%; z-index:9;
-    top:calc(env(safe-area-inset-top, 0px) + 12px);
-    transform:translateX(-50%);
-    display:none; align-items:center; gap:9px;
-    appearance:none; border:none; cursor:pointer;
-    background:#E43A3A; color:#fff;
-    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size:11px; font-weight:700; letter-spacing:.14em;
-    font-variant-numeric:tabular-nums;
-    padding:9px 17px; border-radius:99px;
-    box-shadow:0 4px 18px rgba(228,58,58,.35);
-  }
-  #rec.on{ display:flex; }
-  #rec .blink{ width:8px; height:8px; border-radius:50%; background:#fff; }
-  @media (prefers-reduced-motion: no-preference){
-    #rec.on .blink{ animation:blink 1s steps(2, start) infinite; }
-  }
-  @keyframes blink{ 50%{ opacity:.2; } }
-  #save{
-    position:fixed; left:50%; bottom:120px; transform:translateX(-50%);
-    z-index:9; display:none; gap:10px; align-items:center;
-  }
-  #save.on{ display:flex; }
-  .save-btn{
-    appearance:none; cursor:pointer; border:1px solid var(--ink);
-    background:var(--ink); color:var(--bg);
-    font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
-    padding:13px 22px; border-radius:99px;
-  }
-  .save-btn.ghost{ background:transparent; color:var(--dim); border-color:var(--line); }
 
   /* ---------- toast ---------- */
   #toast{
@@ -357,39 +310,6 @@
     </button>
   </div>
   <div class="cfg-row">
-    <label>Grabar video</label>
-    <div class="seg">
-      <button id="segV" type="button">9:16</button>
-      <button id="segS" type="button">1:1</button>
-      <button id="segH" type="button">16:9</button>
-    </div>
-  </div>
-  <div class="cfg-row">
-    <label>Calidad</label>
-    <div class="seg">
-      <button id="segQA" type="button">1080</button>
-      <button id="segQL" type="button">720 · fluida</button>
-    </div>
-  </div>
-  <button class="cfg-btn" id="btnRec" type="button">Iniciar grabación</button>
-  <p class="cfg-note" id="recNote">
-    Graba el visualizador con el audio, ya en la proporción exacta.
-    Nada que recortar después.
-  </p>
-
-  <div class="cfg-row">
-    <label>Guía de encuadre</label>
-    <div class="seg">
-      <button id="segGuideOff" type="button">Oculta</button>
-      <button id="segGuideOn" type="button">9:16</button>
-    </div>
-  </div>
-  <p class="cfg-note">
-    Marca el área 9:16 en pantalla, por si prefieres la grabación de
-    pantalla del teléfono: todo lo de adentro sobrevive el recorte.
-  </p>
-
-  <div class="cfg-row">
     <label>Visualizador</label>
     <div class="seg">
       <button id="segDots" type="button">Puntitos</button>
@@ -444,15 +364,6 @@
 
 <div id="toast"></div>
 
-<button id="rec" type="button" aria-label="Detener grabación">
-  <span class="blink"></span><span id="recTime">0:00</span>
-</button>
-
-<div id="save">
-  <button class="save-btn" id="btnSave" type="button">Guardar video</button>
-  <button class="save-btn ghost" id="btnDiscard" type="button">Descartar</button>
-</div>
-
 <input type="file" id="filePick" multiple hidden>
 
 <script>
@@ -475,8 +386,7 @@
 
   /* ============ configuración (persistente) ============ */
   var CFG = { mode:'dots', n:45, speed:1, bell:1, thr:0.03,
-              theme:'light', width:2.4, maxH:24,
-              recFmt:'9:16', guide:false, qual:'ligera' };
+              theme:'light', width:2.4, maxH:24 };
   try{
     var saved = JSON.parse(localStorage.getItem('pulso-cfg') || '{}');
     for (var ck in CFG) if (saved[ck] !== undefined) CFG[ck] = saved[ck];
@@ -524,8 +434,9 @@
     thumb.height = Math.round(TH * dpr);
     tg.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  window.addEventListener('resize', function(){ resize(); applyGuide(); });
+  window.addEventListener('resize', function(){ resize(); applySafeTop(); });
   resize();
+  applySafeTop();
 
   var toastTimer = 0;
   function toast(msg){
@@ -750,12 +661,7 @@
     }
   }
 
-  var MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
-
-  /* Dibuja la escena completa en cualquier lienzo y cualquier proporción.
-     `k` escala grosores y tipografía: en la pantalla vale 1, y al exportar
-     a 1080 px de ancho vale 1080/W, así el video se ve igual que el cel. */
-  function renderScene(ctx, w, h, k, withHud){
+  function renderScene(ctx, w, h){
     var dark = CFG.theme === 'dark';
     var ink  = dark ? '#FFFFFF' : '#000000';
     var rest = dark ? '#2E2E33' : '#DDD9D2';
@@ -768,9 +674,9 @@
     var active = amp > 0.015;
     // área de movimiento: altura máxima configurable
     var scale = h * (CFG.maxH / 100) * (0.3 + amp * 0.7) * (1 + beatEnv * 0.10);
-    var baseLen = 0.6 * k;
+    var baseLen = 0.6;
     ctx.strokeStyle = active ? ink : rest;
-    ctx.lineWidth = CFG.width * k;
+    ctx.lineWidth = CFG.width;
     ctx.lineCap = 'round';
 
     if (CFG.mode === 'line'){
@@ -798,89 +704,14 @@
       }
       ctx.stroke();
     }
-
-    if (withHud) renderHud(ctx, w, h, k, ink, rest);
   }
 
-  /* El HUD del video: en pantalla es HTML, pero un lienzo exportado no lo
-     lleva, así que aquí se dibuja el mismo bloque (nombre, onda, tiempo,
-     marca) directamente en el lienzo. */
-  function renderHud(ctx, w, h, k, ink, rest){
-    if (current < 0) return;
-    var track = tracks[current];
-    var dur = audio && isFinite(audio.duration) ? audio.duration : 0;
-    var t = scrubbing ? scrubTime : (audio ? audio.currentTime : 0);
-    var frac = dur > 0 ? Math.max(0, Math.min(1, t / dur)) : 0;
-    var dim = CFG.theme === 'dark' ? '#6E6C75' : '#A8A6A0';
-    var spaced = 'letterSpacing' in ctx;
-
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    var y = h * 0.075;
-
-    if (spaced) ctx.letterSpacing = (1.3 * k) + 'px';
-    ctx.font = '600 ' + (11 * k) + 'px ' + MONO;
-    ctx.fillStyle = ink;
-    ctx.fillText(track.name, w / 2, y);
-    y += 16 * k;
-
-    var tw = 170 * k, th = 36 * k, tx = (w - tw) / 2, mid = y + th / 2;
-    if (track.peaks){
-      var bw = tw / THUMB_BARS;
-      for (var i = 0; i < THUMB_BARS; i++){
-        var bh = Math.max(1.5 * k, track.peaks[i] * (th * 0.46));
-        ctx.fillStyle = (i + 0.5) / THUMB_BARS <= frac ? ink : rest;
-        ctx.fillRect(tx + i * bw + bw * 0.22, mid - bh, bw * 0.56, bh * 2);
-      }
-    } else {
-      ctx.fillStyle = rest;
-      ctx.fillRect(tx, mid - 0.75 * k, tw, 1.5 * k);
-      ctx.fillStyle = ink;
-      ctx.fillRect(tx + frac * (tw - 3 * k), mid - 4 * k, 3 * k, 8 * k);
-    }
-    y += th + 14 * k;
-
-    ctx.font = (11 * k) + 'px ' + MONO;
-    ctx.fillStyle = dim;
-    ctx.fillText(fmt(t) + ' / ' + fmt(dur), w / 2, y);
-    y += 18 * k;
-
-    if (spaced) ctx.letterSpacing = (2.8 * k) + 'px';
-    ctx.font = (10 * k) + 'px ' + MONO;
-    ctx.fillText('@dantefckndavis', w / 2, y);
-    ctx.restore();
-  }
-
-  /* Marco 9:16 sobre la vista en vivo, para encuadrar antes de grabar
-     con la grabación de pantalla del teléfono. */
-  /* El área 9:16 y cuánto sobra arriba: el HUD se recorre esa distancia
-     para quedar dentro del encuadre. */
-  function guideBox(){
-    var gw = W, gh = W * 16 / 9;
-    if (gh > H){ gh = H; gw = H * 9 / 16; }
-    return { w:gw, h:gh, x:(W - gw) / 2, y:(H - gh) / 2 };
-  }
-
-  function applyGuide(){
-    document.body.classList.toggle('guided', !!CFG.guide);
-    document.body.style.setProperty('--guideTop',
-      (CFG.guide ? Math.round(guideBox().y) : 0) + 'px');
-  }
-
-  function drawGuide(){
-    var b = guideBox();
-    var gw = b.w, gh = b.h, x0 = b.x, y0 = b.y;
-    g.save();
-    g.fillStyle = CFG.theme === 'dark' ? 'rgba(0,0,0,.62)' : 'rgba(17,17,19,.16)';
-    g.fillRect(0, 0, W, y0);
-    g.fillRect(0, y0 + gh, W, H - y0 - gh);
-    g.fillRect(0, y0, x0, gh);
-    g.fillRect(x0 + gw, y0, W - x0 - gw, gh);
-    g.strokeStyle = 'rgba(228,58,58,.75)';
-    g.lineWidth = 1;
-    g.strokeRect(x0 + 0.5, y0 + 0.5, gw - 1, gh - 1);
-    g.restore();
+  /* Cuánto sobra por arriba del área 9:16 centrada. El HUD se recorre esa
+     distancia para que el recorte a vertical no se lo lleve. */
+  function applySafeTop(){
+    var gh = W * 16 / 9;
+    var y = gh > H ? 0 : (H - gh) / 2;
+    document.body.style.setProperty('--safeTop', Math.round(y) + 'px');
   }
 
   function draw(){
@@ -898,17 +729,8 @@
     if (playing && freqData) updateShape();
     else for (var k = 0; k <= N_PTS; k++) ys[k] *= 0.94;
 
-    if (recording){
-      // una sola escena por cuadro: se dibuja la del video y la pantalla
-      // la muestra escalada. Dibujar las dos por separado costaba el doble
-      // de píxeles y ahogaba al teléfono.
-      tickRec(now);
-      paintPreview();
-    } else {
-      renderScene(g, W, H, 1, false);
-      if (CFG.guide) drawGuide();
-      drawThumb();
-    }
+    renderScene(g, W, H);
+    drawThumb();
 
     // el reloj no necesita 60 actualizaciones por segundo, y escribir en el
     // DOM cada cuadro obliga al navegador a recalcular la página
@@ -923,21 +745,6 @@
     }
   }
 
-  /* La pantalla durante la grabación: el encuadre real del video, centrado
-     y con su marco, para que veas exactamente lo que se está grabando. */
-  function paintPreview(){
-    var dark = CFG.theme === 'dark';
-    g.fillStyle = dark ? '#050506' : '#FBFBF9';
-    g.fillRect(0, 0, W, H);
-    var ar = exCv.width / exCv.height;
-    var pw = W, ph = W / ar;
-    if (ph > H){ ph = H; pw = H * ar; }
-    var x0 = (W - pw) / 2, y0 = (H - ph) / 2;
-    g.drawImage(exCv, x0, y0, pw, ph);
-    g.strokeStyle = 'rgba(228,58,58,.7)';
-    g.lineWidth = 1;
-    g.strokeRect(x0 + 0.5, y0 + 0.5, pw - 1, ph - 1);
-  }
 
   function drawThumb(){
     tg.clearRect(0, 0, TW, TH);
@@ -1059,14 +866,6 @@
   var rSpeed = document.getElementById('rSpeed'), vSpeed = document.getElementById('vSpeed');
   var rBell = document.getElementById('rBell'), vBell = document.getElementById('vBell');
   var rThr = document.getElementById('rThr'),   vThr = document.getElementById('vThr');
-  var segV = document.getElementById('segV');
-  var segS = document.getElementById('segS');
-  var segH = document.getElementById('segH');
-  var segGuideOff = document.getElementById('segGuideOff');
-  var segGuideOn = document.getElementById('segGuideOn');
-  var segQA = document.getElementById('segQA');
-  var segQL = document.getElementById('segQL');
-  var btnRec = document.getElementById('btnRec');
 
   function applyTheme(){
     document.body.classList.toggle('dark', CFG.theme === 'dark');
@@ -1091,14 +890,6 @@
     rSpeed.value = Math.round(CFG.speed * 100); vSpeed.textContent = Math.round(CFG.speed * 100) + '%';
     rBell.value = Math.round(CFG.bell * 100); vBell.textContent = Math.round(CFG.bell * 100) + '%';
     rThr.value = Math.round(CFG.thr * 100);     vThr.textContent = Math.round(CFG.thr * 100) + '%';
-    segV.classList.toggle('on', CFG.recFmt === '9:16');
-    segS.classList.toggle('on', CFG.recFmt === '1:1');
-    segH.classList.toggle('on', CFG.recFmt === '16:9');
-    segQA.classList.toggle('on', CFG.qual === 'alta');
-    segQL.classList.toggle('on', CFG.qual === 'ligera');
-    segGuideOn.classList.toggle('on', !!CFG.guide);
-    segGuideOff.classList.toggle('on', !CFG.guide);
-    btnRec.textContent = recording ? 'Detener grabación' : 'Iniciar grabación';
   }
   syncCfgUI();
 
@@ -1148,189 +939,6 @@
       });
     });
   });
-
-  /* ============ grabación de video ============
-     El visualizador se vuelve a dibujar en un lienzo aparte con la
-     proporción exacta que pide la red social, y ese lienzo + el audio se
-     graban juntos. El video sale listo: nada que recortar después. */
-  var RATIOS = {
-    '9:16': { alta:[1080,1920], ligera:[720,1280] },
-    '1:1' : { alta:[1080,1080], ligera:[720, 720] },
-    '16:9': { alta:[1920,1080], ligera:[1280,720] }
-  };
-  var BITRATE = { alta:6000000, ligera:3000000 };
-  var exCv = document.createElement('canvas');
-  var exG = exCv.getContext('2d');
-  var recDest = null, recorder = null, recChunks = [], recBlob = null, recExt = 'mp4';
-  var recording = false, recStart = 0, recLastFrame = 0;
-  var recTrack = null, recStep = 33.34, recClock = 0, recCost = 0;
-  var recEl = document.getElementById('rec');
-  var recTimeEl = document.getElementById('recTime');
-  var saveEl = document.getElementById('save');
-
-  function pickMime(){
-    if (typeof MediaRecorder === 'undefined') return null;
-    var list = [
-      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-      'video/mp4',
-      'video/webm;codecs=vp9,opus',
-      'video/webm;codecs=vp8,opus',
-      'video/webm'
-    ];
-    for (var i = 0; i < list.length; i++){
-      try{ if (MediaRecorder.isTypeSupported(list[i])) return list[i]; }catch(e){}
-    }
-    return '';   // sin tipo preferido: que el navegador elija
-  }
-
-  function weigh(bytes){
-    return bytes < 1048576
-      ? Math.max(1, Math.round(bytes / 1024)) + ' KB'
-      : (Math.round(bytes / 104857.6) / 10) + ' MB';
-  }
-
-  function canRecord(){
-    return typeof MediaRecorder !== 'undefined' &&
-           typeof exCv.captureStream === 'function';
-  }
-
-  function tickRec(now){
-    if (now - recLastFrame < recStep) return;
-    recLastFrame = now;
-    var t0 = performance.now();
-    renderScene(exG, exCv.width, exCv.height, exCv.width / Math.max(1, W), true);
-    // ritmo adaptativo: si al teléfono le cuesta cada cuadro, se le pide
-    // menos seguido en vez de encimarle trabajo que no alcanza a hacer.
-    // Encimarlo es justo lo que produce los tirones y el audio entrecortado.
-    recCost += (performance.now() - t0 - recCost) * 0.2;
-    recStep = Math.min(66.7, Math.max(33.34, recCost * 2.2));
-    // si el navegador lo permite, se le entrega el cuadro explícitamente:
-    // así el video lleva justo los cuadros dibujados, sin repetidos ni saltos
-    if (recTrack) { try{ recTrack.requestFrame(); }catch(e){} }
-    if (now - recClock > 250){
-      recClock = now;
-      recTimeEl.textContent = fmt((now - recStart) / 1000);
-    }
-  }
-
-  function startRec(){
-    if (recording) return;
-    if (current < 0){ toast('Carga un beat primero'); return; }
-    if (!canRecord()){ toast('Este navegador no graba; usa la guía 9:16'); return; }
-    ensureAudio(); ensureGraph();
-
-    var r = (RATIOS[CFG.recFmt] || RATIOS['9:16'])[CFG.qual] || RATIOS['9:16'].alta;
-    exCv.width = r[0]; exCv.height = r[1];
-    renderScene(exG, exCv.width, exCv.height, exCv.width / Math.max(1, W), true);
-
-    // captureStream(0) entrega sólo los cuadros que se piden a mano; si el
-    // navegador no lo soporta, se cae a muestreo automático a 30 fps
-    var stream = null;
-    recTrack = null;
-    try{
-      stream = exCv.captureStream(0);
-      var vt = stream.getVideoTracks()[0];
-      if (vt && typeof vt.requestFrame === 'function') recTrack = vt;
-      else { stream = null; }
-    }catch(e){ stream = null; }
-    if (!stream){
-      try{ stream = exCv.captureStream(30); }
-      catch(e){ toast('No pude iniciar la grabación'); return; }
-    }
-
-    // el audio se toma del mismo grafo que alimenta al visualizador
-    try{
-      if (!recDest){
-        recDest = actx.createMediaStreamDestination();
-        analyser.connect(recDest);
-      }
-      recDest.stream.getAudioTracks().forEach(function(t){ stream.addTrack(t); });
-    }catch(e){ /* si falla, el video se graba sin audio */ }
-
-    var mime = pickMime();
-    recChunks = [];
-    try{
-      recorder = mime
-        ? new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: BITRATE[CFG.qual] })
-        : new MediaRecorder(stream);
-    }catch(e){
-      try{ recorder = new MediaRecorder(stream); }
-      catch(e2){ toast('No pude iniciar la grabación'); return; }
-    }
-
-    recExt = (recorder.mimeType || mime || '').indexOf('mp4') >= 0 ? 'mp4' : 'webm';
-    recorder.ondataavailable = function(e){ if (e.data && e.data.size) recChunks.push(e.data); };
-    recorder.onstop = function(){
-      recBlob = new Blob(recChunks, { type: recorder.mimeType || mime || 'video/mp4' });
-      recChunks = [];
-      saveEl.classList.add('on');
-      toast('Video listo · ' + weigh(recBlob.size));
-    };
-    recorder.start();
-
-    recording = true;
-    recStart = performance.now();
-    recLastFrame = 0; recClock = 0; recCost = 0; recStep = 33.34;
-    document.body.classList.add('recording');
-    recTimeEl.textContent = '0:00';
-    recEl.classList.add('on');
-    saveEl.classList.remove('on');
-    closeSheet();
-    if (audio.paused) audio.play().catch(function(){});
-    syncCfgUI();
-  }
-
-  function stopRec(){
-    if (!recording) return;
-    recording = false;
-    recTrack = null;
-    document.body.classList.remove('recording');
-    recEl.classList.remove('on');
-    try{ recorder.stop(); }catch(e){}
-    syncCfgUI();
-  }
-
-  function closeSave(){ saveEl.classList.remove('on'); recBlob = null; }
-
-  function saveRec(){
-    if (!recBlob) return;
-    var base = current >= 0 ? tracks[current].name.replace(/[^\w-]+/g, '_') : 'beat';
-    var name = 'PULSO-' + base + '.' + recExt;
-    var file = null;
-    try{ file = new File([recBlob], name, { type: recBlob.type }); }catch(e){}
-    // en el cel, la hoja de compartir deja guardarlo en Fotos o mandarlo a CapCut
-    if (file && navigator.canShare && navigator.canShare({ files:[file] })){
-      navigator.share({ files:[file] }).then(closeSave, function(){});
-      return;
-    }
-    var url = URL.createObjectURL(recBlob);
-    var a = document.createElement('a');
-    a.href = url; a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
-    closeSave();
-  }
-
-  btnRec.addEventListener('click', function(){ recording ? stopRec() : startRec(); });
-  recEl.addEventListener('click', stopRec);
-  document.getElementById('btnSave').addEventListener('click', saveRec);
-  document.getElementById('btnDiscard').addEventListener('click', closeSave);
-
-  segV.addEventListener('click', function(){ CFG.recFmt = '9:16'; saveCfg(); syncCfgUI(); });
-  segS.addEventListener('click', function(){ CFG.recFmt = '1:1';  saveCfg(); syncCfgUI(); });
-  segH.addEventListener('click', function(){ CFG.recFmt = '16:9'; saveCfg(); syncCfgUI(); });
-  segQA.addEventListener('click', function(){ CFG.qual = 'alta';   saveCfg(); syncCfgUI(); });
-  segQL.addEventListener('click', function(){ CFG.qual = 'ligera'; saveCfg(); syncCfgUI(); });
-  segGuideOn.addEventListener('click', function(){ CFG.guide = true;  saveCfg(); applyGuide(); syncCfgUI(); });
-  segGuideOff.addEventListener('click', function(){ CFG.guide = false; saveCfg(); applyGuide(); syncCfgUI(); });
-  applyGuide();
-
-  if (!canRecord()){
-    btnRec.disabled = true;
-    document.getElementById('recNote').textContent =
-      'Este navegador no puede grabar video. Prende la guía 9:16 de abajo y usa ' +
-      'la grabación de pantalla del teléfono.';
-  }
 
   function renderList(){
     listEl.innerHTML = '';

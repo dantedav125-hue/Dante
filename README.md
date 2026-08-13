@@ -8,8 +8,7 @@ Reproductor de audio para tus beats, con visualizador de onda en tiempo real y e
 - **Forma de onda sincronizada** — la onda completa de la pista se dibuja con barras ("rayitas") y va pasando por el centro de la pantalla, sincronizada con la música. Lo ya reproducido se pinta con el gradiente de calor; lo que viene, en gris.
 - **Efectos con el ritmo** — detección de beats en tiempo real (energía de graves): destellos, partículas que explotan desde la línea de reproducción, resplandor que respira con el bajo, y pulsos en el logo y el botón de play.
 - **Controles** — tap en la pantalla = play/pausa · arrastra horizontal = adelantar/regresar · botones de pista anterior/siguiente · lista de beats deslizable.
-- **Graba el video ya en formato** — en Configuración, elige **9:16** (Reels/TikTok), **1:1** o **16:9** y toca "Iniciar grabación". La app vuelve a dibujar el visualizador en un lienzo con esa proporción exacta y lo graba junto con el audio. Sale un MP4 de 1080×1920 listo para subir: nada que recortar ni reencuadrar en CapCut. Al terminar, "Guardar video" abre la hoja de compartir del teléfono.
-- **Guía de encuadre** — si prefieres la grabación de pantalla del cel, prende la guía 9:16: marca en pantalla el área que sobrevive el recorte y recorre el nombre y la onda hacia adentro para que no se pierdan.
+- **Pensada para grabar la pantalla** — el nombre de la pista, la onda, el tiempo y la marca arrancan dentro del área 9:16 centrada, no pegados al borde superior. Así, cuando grabas la pantalla del cel y recortas a vertical para Reels o TikTok, el texto sigue dentro del cuadro en vez de perderse por arriba. Los controles se desvanecen del todo mientras suena, para que no salgan en la grabación.
 - **Instalable como app** — ábrela en tu cel y usa "Agregar a pantalla de inicio": se instala como app en pantalla completa (PWA).
 
 ## Cómo usarla en tu cel
@@ -24,4 +23,4 @@ También puedes abrir `index.html` directamente en cualquier navegador de escrit
 
 Un solo archivo `index.html` sin dependencias: Web Audio API (análisis de frecuencia + decodificación de la onda), Canvas 2D para el visualizador, y Media Session API para los controles de la pantalla de bloqueo.
 
-La grabación usa `canvas.captureStream()` sobre un lienzo aparte del tamaño exacto que se pide, más `MediaStreamAudioDestinationNode` colgado del mismo analizador, y ambas pistas entran a `MediaRecorder` (MP4 donde el navegador lo soporta, si no WebM). El HUD —nombre, onda, tiempo y marca— es HTML en pantalla, así que para el video se redibuja dentro del lienzo escalado con el mismo factor, y el resultado se ve igual que el teléfono. Si el navegador no soporta grabar, el botón se deshabilita y queda la guía 9:16.
+El encuadre seguro se calcula en cada cambio de tamaño: la pantalla del teléfono es más alargada que 9:16, así que sobra una banda arriba y otra abajo. Esa banda se mide y se pasa a la hoja de estilos como `--safeTop`, que empuja el bloque de texto hacia adentro del recorte.
