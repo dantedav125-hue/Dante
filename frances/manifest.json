@@ -1,0 +1,14 @@
+{
+  "name": "Français — aprender francés",
+  "short_name": "Français",
+  "description": "Curso de francés con lecciones, conjugador de 178 verbos, tarjetas, modo escucha y repaso espaciado.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBFAF7",
+  "theme_color": "#FBFAF7",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
