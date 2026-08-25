@@ -387,14 +387,16 @@
     var pron = PERSONNES[p];
     if (v.p) {
       var refl = PRON_REFL[p];
-      if (p < 3 && new RegExp('^[' + VOYELLES + ']').test(forme) && !v.h) {
-        refl = refl.slice(0, -1) + "'";
-      }
-      forme = refl + ' ' + forme;
+      /* me, te, se eliden ante vocal; nous y vous no. Y "ils s’amusent" es
+         persona 5, así que no basta con mirar las tres primeras. */
+      var elide = (p !== 3 && p !== 4) &&
+                  new RegExp('^[' + VOYELLES + ']').test(forme) && !v.h;
+      forme = elide ? refl.slice(0, -1) + '\u2019' + forme : refl + ' ' + forme;
     }
     if (p === 0) {
-      pron = new RegExp('^[' + VOYELLES + ']').test(forme) && !v.h ? "j'" : 'je';
-      return pron === "j'" ? pron + forme : pron + ' ' + forme;
+      pron = new RegExp('^[' + VOYELLES + ']').test(forme) && !v.h ? 'j\u2019' : 'je';
+      /* j’ se pega a la forma; je lleva espacio */
+      return pron === 'j\u2019' ? pron + forme : pron + ' ' + forme;
     }
     return pron + ' ' + forme;
   }
