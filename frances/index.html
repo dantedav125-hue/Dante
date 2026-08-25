@@ -244,10 +244,39 @@ td:first-child{font-weight:500}
 /* ---------- conjugación ---------- */
 .conj{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
   overflow:hidden}
-.cl{display:flex;align-items:center;gap:10px;padding:10px 15px;border-bottom:1px solid var(--line)}
+.cl{display:flex;align-items:center;gap:10px;padding:11px 15px;border-bottom:1px solid var(--line)}
 .cl:last-child{border-bottom:none}
 .cl .pr{flex:0 0 78px;color:var(--mut);font-size:13.5px}
-.cl b{font-size:17px;font-weight:600;flex:1}
+.cl b{font-size:17px;font-weight:600;flex:0 0 auto;min-width:118px}
+/* la glosa española: es la razón de ser de la fila, pero no debe competir
+   con la forma francesa, así que va en cursiva y en tono menor */
+.cl .gl{flex:1;font-style:normal;font-size:14.5px;color:var(--ink2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cl.abre{cursor:pointer;transition:background .12s}
+.cl.abre:hover{background:var(--surface2)}
+.cl.abre:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.cl .chev{flex:0 0 auto;color:var(--mut);font-size:17px;
+  transition:transform .18s;display:inline-block}
+.cl.on .chev{transform:rotate(90deg)}
+.cl.on{background:var(--accent-w)}
+
+/* ---------- oraciones desplegables ---------- */
+.frases{background:var(--surface2);border-bottom:1px solid var(--line);
+  padding:6px 15px 12px}
+.fr1{padding:9px 0;border-bottom:1px solid var(--line)}
+.fr1:last-child{border-bottom:none}
+.ffr{font-size:15.5px;font-weight:600;line-height:1.45}
+.fes{font-size:14px;color:var(--ink2);margin-top:2px;line-height:1.45}
+.fnota{font-size:12.5px;color:var(--warn);margin-top:5px;line-height:1.45;
+  padding-left:9px;border-left:2px solid var(--warn)}
+
+/* ---------- notas de traducción ---------- */
+.pista{font-size:13.5px;color:var(--mut);margin:-4px 0 4px;font-style:italic}
+.notaT{font-size:13.5px;color:var(--ink2);background:var(--surface2);
+  border-radius:9px;padding:10px 13px;margin:-4px 0 10px;line-height:1.5}
+.notaP{font-size:12.5px;color:var(--mut);margin:7px 0 0;line-height:1.5}
+.card.aviso{background:var(--mal-w);border-color:transparent}
+.card.aviso b{color:var(--mal)}
 .search{width:100%;background:var(--surface);border:1.5px solid var(--line);
   border-radius:11px;padding:13px 16px;font-size:16px;outline:none;margin-bottom:14px}
 .search:focus{border-color:var(--accent)}
@@ -367,6 +396,16 @@ a.res.reco{border-color:var(--accent)}
   .theorie{font-size:17px}
   .grid{grid-template-columns:repeat(3,1fr)}
 }
+@media (max-width:560px){
+  /* En pantalla angosta la glosa baja a su propia línea, alineada con la
+     forma francesa. Sin sangría: ya no hay columna de pronombre debajo de
+     la cual alinearse. */
+  .cl{flex-wrap:wrap;gap:4px 9px}
+  .cl b{min-width:0;flex:1}
+  .cl .gl{flex:1 0 100%;order:5;white-space:normal;font-size:13.5px;margin-top:-1px}
+  .cl .pr{flex:0 0 62px}
+  .cl .chev{order:4}
+}
 @media (max-width:400px){
   .stats3{gap:6px}
   .stat b{font-size:22px}
@@ -388,7 +427,10 @@ a.res.reco{border-color:var(--accent)}
 <script src="data/expressions.js"></script>
 <script src="data/ressources.js"></script>
 <script src="data/placement.js"></script>
+<script src="data/ejemplos.js"></script>
 <script src="js/conjugueur.js"></script>
+<script src="js/conjugador-es.js"></script>
+<script src="js/frases.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/srs.js"></script>
 <script src="js/store.js"></script>

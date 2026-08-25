@@ -666,12 +666,22 @@
     if (!t) return '<p class="mut">No tengo ese verbo. <a class="lien" href="#/verbes">Volver</a></p>';
     var v = global.Conjugueur.trouver(inf);
     var P = global.Conjugueur.PERSONNES;
+    var CE = global.ConjugadorES;
+    var Fr = global.Frases;
+    var datos = (global.EJEMPLOS || {})[v.i] || null;
+    var esInf = datos ? datos.es : null;
 
     var h = '<div class="lecon-top"><a class="lien" href="#/verbes">← Verbos</a>' +
             '<a class="lien" href="#/drill/' + encodeURIComponent(inf) + '">⚡ Practicar este</a></div>';
     h += '<header class="hd"><div><h1>' + esc(t.infinitif) + btnAudio(t.infinitif) + '</h1>' +
-         '<p class="sub">' + esc(t.traduction) + ' · grupo ' + v.g +
+         '<p class="sub"><b>' + esc(t.traduction) + '</b> · grupo ' + v.g +
          ' · auxiliar <b>' + t.auxiliaire + '</b> · participio <b>' + esc(t.participe) + '</b></p></div></header>';
+
+    /* Aviso cuando el verbo NO se traduce literal. Es lo primero que hay que
+       saber antes de mirar ninguna tabla. */
+    if (datos && datos.nota) {
+      h += '<div class="card aviso"><b>No se traduce literal</b><span>' + esc(datos.nota) + '</span></div>';
+    }
 
     if (v.ortho) {
       var notas = {
@@ -683,28 +693,68 @@
         eler:'Dobla la l ante terminación muda.',
         eter:'Dobla la t ante terminación muda.'
       };
-      if (notas[v.ortho]) h += '<div class="card note"><b>Cambio ortográfico</b><span>' + esc(notas[v.ortho]) + '</span></div>';
+      if (notas[v.ortho]) {
+        h += '<div class="card note"><b>Cambio ortográfico</b><span>' + esc(notas[v.ortho]) + '</span></div>';
+      }
     }
+
+    h += '<p class="pista">Toca cualquier línea para ver cinco oraciones con esa forma.</p>';
 
     ORDRE_TEMPS.forEach(function (tp) {
       var f = t.temps[tp];
       if (!f) return;
+
       h += '<h2 class="sec">' + esc(NOMS_TEMPS[tp] || tp) + '</h2>';
+
+      /* Aviso estructural del tiempo: aplica a todos los verbos por igual. */
+      var notaT = Fr && Fr.NOTAS_TIEMPO[tp];
+      if (notaT) h += '<p class="notaT">' + esc(notaT) + '</p>';
+
       h += '<div class="conj">';
-      if (tp === 'imperatif') {
-        ['(tu)', '(nous)', '(vous)'].forEach(function (p, k) {
-          if (f[k] === '—') return;
-          h += '<div class="cl"><span class="pr">' + p + '</span><b>' + esc(f[k]) + ' !</b>' + btnAudio(f[k]) + '</div>';
-        });
-      } else {
-        f.forEach(function (forme, k) {
-          if (forme === '—') return;
-          var complet = global.Conjugueur.avecPronom(v, tp, k);
-          h += '<div class="cl"><span class="pr">' + esc(P[k]) + '</span><b>' + esc(forme) + '</b>' +
-               btnAudio(complet) + '</div>';
-        });
+
+      var etiquetas = tp === 'imperatif' ? ['(tu)', '(nous)', '(vous)'] : P;
+      var nFilas = tp === 'imperatif' ? 3 : 6;
+
+      for (var k = 0; k < nFilas; k++) {
+        var forme = f[k];
+        if (!forme || forme === '—') continue;
+
+        /* La forma se muestra ENTERA, con su pronombre, porque separarlo en
+           otra columna rompe la elisión: "je" + "ai bu" se lee mal, cuando
+           lo correcto es "j’ai bu". El subjuntivo se cita con su "que"
+           delante, que es como se aprende. */
+        var completo = tp === 'imperatif' ? forme + ' !'
+                     : global.Conjugueur.avecPronom(v, tp, k);
+        var muestraFr = (tp === 'subjonctif' || tp === 'subjonctifPasse')
+                      ? 'que ' + completo : completo;
+
+        var glosaEs = '';
+        if (esInf && CE) {
+          var tEs = Fr.TIEMPO_ES[tp];
+          glosaEs = tp === 'imperatif'
+            ? CE.glosa(esInf, 'imperativo', k, {conPronombre:false})
+            : CE.glosa(esInf, tEs, k, {conPronombre:true});
+          if (glosaEs && (tp === 'subjonctif' || tp === 'subjonctifPasse')) glosaEs = 'que ' + glosaEs;
+          if (glosaEs && tp === 'imperatif') glosaEs = '¡' + mayuscula(glosaEs) + '!';
+        }
+
+        var audio = tp === 'imperatif' ? forme : global.Conjugueur.avecPronom(v, tp, k);
+
+        h += '<div class="cl abre" data-tp="' + tp + '" data-p="' + k + '" role="button" tabindex="0">';
+        if (tp === 'imperatif') h += '  <span class="pr">' + esc(etiquetas[k]) + '</span>';
+        h += '  <b>' + esc(muestraFr) + '</b>';
+        h += '  <i class="gl">' + esc(glosaEs) + '</i>';
+        h += '  ' + btnAudio(audio);
+        h += '  <span class="chev">›</span>';
+        h += '</div>';
+        h += '<div class="frases" data-for="' + tp + '-' + k + '" hidden></div>';
       }
       h += '</div>';
+
+      /* La fila de "vous" merece su propia advertencia, una vez por tiempo. */
+      if (tp !== 'imperatif') {
+        h += '<p class="notaP">' + esc(Fr.NOTA_VOUS) + '</p>';
+      }
     });
 
     if (v.aux === 'être') {
@@ -713,6 +763,64 @@
            'ils sont ' + esc(t.participe) + 's, elles sont ' + esc(t.participe) + 'es.</span></div>';
     }
     return h;
+  }
+
+  function mayuscula(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }
+
+  /* Despliega el cuadro de oraciones de una fila. Se generan al abrir, no al
+     pintar la página: son 12 tiempos × 6 personas y no tiene sentido calcular
+     360 oraciones que quizá nadie mire. */
+  function montrerFrases(inf, tp, p, caja) {
+    var v = global.Conjugueur.trouver(inf);
+    if (!v || !global.Frases) return;
+    var fs = global.Frases.generar(v, tp, p, 5);
+    if (!fs.length) {
+      caja.innerHTML = '<p class="mut">No hay ejemplos para esta forma.</p>';
+      return;
+    }
+    var h = '';
+    fs.forEach(function (f) {
+      h += '<div class="fr1">';
+      h += '  <div class="ffr">' + esc(f.fr) + btnAudio(f.fr) + '</div>';
+      h += '  <div class="fes">' + esc(f.es) + '</div>';
+      if (f.nota) h += '  <div class="fnota">' + esc(f.nota) + '</div>';
+      h += '</div>';
+    });
+    caja.innerHTML = h;
+  }
+
+  function montarVerbe(inf) {
+    var cont = document.getElementById('app');
+    if (!cont) return;
+    Array.prototype.forEach.call(cont.querySelectorAll('.cl.abre'), function (fila) {
+      var abrir = function () {
+        var tp = fila.getAttribute('data-tp'), p = +fila.getAttribute('data-p');
+        var caja = cont.querySelector('[data-for="' + tp + '-' + p + '"]');
+        if (!caja) return;
+        var abierta = !caja.hidden;
+        if (abierta) {
+          caja.hidden = true;
+          fila.classList.remove('on');
+          return;
+        }
+        if (!caja.dataset.listo) {
+          montrerFrases(inf, tp, p, caja);
+          caja.dataset.listo = '1';
+        }
+        caja.hidden = false;
+        fila.classList.add('on');
+      };
+      fila.addEventListener('click', function (ev) {
+        /* el botón de audio vive dentro de la fila y tiene su propio handler */
+        if (ev.target.closest && ev.target.closest('.say')) return;
+        abrir();
+      });
+      fila.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrir(); }
+      });
+    });
   }
 
   /* ======================================================================
@@ -1283,7 +1391,7 @@
 
       case 'verbes':
         html = vueVerbes(arg);
-        if (!arg) apres = monterVerbes;
+        apres = arg ? function () { montarVerbe(decodeURIComponent(arg)); } : monterVerbes;
         break;
 
       case 'drill':
