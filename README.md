@@ -22,7 +22,7 @@ Reproductor de audio para tus beats, con visualizador de onda en tiempo real y e
 - **Forma de onda sincronizada** — la onda completa de la pista se dibuja con barras ("rayitas") y va pasando por el centro de la pantalla, sincronizada con la música. Lo ya reproducido se pinta con el gradiente de calor; lo que viene, en gris.
 - **Efectos con el ritmo** — detección de beats en tiempo real (energía de graves): destellos, partículas que explotan desde la línea de reproducción, resplandor que respira con el bajo, y pulsos en el logo y el botón de play.
 - **Controles** — tap en la pantalla = play/pausa · arrastra horizontal = adelantar/regresar · botones de pista anterior/siguiente · lista de beats deslizable.
-- **Pensada para grabar la pantalla** — el nombre de la pista, la onda, el tiempo y la marca arrancan dentro del área 9:16 centrada, no pegados al borde superior. Así, cuando grabas la pantalla del cel y recortas a vertical para Reels o TikTok, el texto sigue dentro del cuadro en vez de perderse por arriba. Los controles se desvanecen del todo mientras suena, para que no salgan en la grabación.
+- **Pensada para grabar la pantalla** — el bloque de texto (nombre de la pista, onda, tiempo y marca) baja hasta donde nada lo tapa: por debajo del Dynamic Island del iPhone y por debajo de la franja superior que Instagram ocupa con su interfaz. Da igual si subes la grabación completa o si la recortas a 9:16: en los dos casos se lee. Los controles se desvanecen del todo mientras suena, para que no salgan en la grabación.
 - **Instalable como app** — ábrela en tu cel y usa "Agregar a pantalla de inicio": se instala como app en pantalla completa (PWA).
 
 ## Cómo usarla en tu cel
@@ -37,7 +37,7 @@ También puedes abrir `index.html` directamente en cualquier navegador de escrit
 
 Un solo archivo `index.html` sin dependencias: Web Audio API (análisis de frecuencia + decodificación de la onda), Canvas 2D para el visualizador, y Media Session API para los controles de la pantalla de bloqueo.
 
-El encuadre seguro se calcula en cada cambio de tamaño: la pantalla del teléfono es más alargada que 9:16, así que sobra una banda arriba y otra abajo. Esa banda se mide y se pasa a la hoja de estilos como `--safeTop`, que empuja el bloque de texto hacia adentro del recorte.
+El encuadre seguro se recalcula en cada cambio de tamaño y se pasa a la hoja de estilos como `--safeTop`. Se respeta la más baja de tres cotas: el `env(safe-area-inset-top)` del aparato (~59 px con Dynamic Island, 44-47 con notch), el 10.4 % superior que Instagram tapa en un Reel de 1080×1920, y ese mismo porcentaje medido sobre el recorte 9:16 centrado por si el video se recorta. Verificado en iPhone SE, 13, 14/15 Pro y 16 Pro Max.
 
 ---
 

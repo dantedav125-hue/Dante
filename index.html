@@ -52,10 +52,9 @@
   #hud{
     position:fixed; top:0; left:0; right:0; z-index:5;
     display:flex; flex-direction:column; align-items:center; gap:8px;
-    /* el texto arranca dentro del área 9:16 centrada, no pegado al borde de
-       la pantalla: así sobrevive el recorte a vertical en vez de quedar
-       fuera por arriba */
-    padding-top:calc(env(safe-area-inset-top, 0px) + 22px + var(--safeTop, 0px));
+    /* el texto baja hasta la franja que Instagram deja libre: dentro del
+       recorte 9:16 y por debajo de su barra superior, que si no lo tapa */
+    padding-top:max(calc(env(safe-area-inset-top, 0px) + 22px), var(--safeTop, 22px));
     pointer-events:none;
   }
   #thumb{
@@ -706,11 +705,23 @@
     }
   }
 
-  /* Cuánto sobra por arriba del área 9:16 centrada. El HUD se recorre esa
-     distancia para que el recorte a vertical no se lo lleve. */
+  /* Dónde empieza el texto. Tres cosas pueden taparlo arriba, y se respeta
+     la que quede más abajo:
+       1. el Dynamic Island o el notch del iPhone. Eso lo resuelve la hoja
+          de estilos con env(safe-area-inset-top): ~59 px en los modelos con
+          isla, 44-47 px en los del notch.
+       2. la interfaz de Instagram encima del video. En un Reel de
+          1080x1920 ocupa los 200 px de arriba, un 10.4 %.
+       3. lo mismo, pero si además recortas el video a 9:16 centrado: ahí
+          hay que sumar la banda que queda fuera del recorte.
+     Con el máximo de las tres, el texto se ve tanto si subes la grabación
+     completa como si la recortas. */
   function applySafeTop(){
-    var gh = W * 16 / 9;
-    var y = gh > H ? 0 : (H - gh) / 2;
+    var IG_TOP = 0.13;                  // 10.4% de Instagram, con margen
+    var gh = Math.min(H, W * 16 / 9);   // alto del recorte 9:16
+    var banda = (H - gh) / 2;           // lo que sobra fuera del recorte
+    var y = Math.max(H * IG_TOP, banda + gh * IG_TOP);
+    if (!isFinite(y)) return;           // nunca escribir un valor inválido
     document.body.style.setProperty('--safeTop', Math.round(y) + 'px');
   }
 
